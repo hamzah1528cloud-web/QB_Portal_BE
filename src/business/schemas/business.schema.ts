@@ -12,6 +12,9 @@ export class Business extends BaseSchema {
   @Prop({ required: true, unique: true })
   email: string;
 
+  @Prop({ required: true })
+  passwordHash: string;
+
   @Prop({ required: false })
   qbRealmId: string;
 

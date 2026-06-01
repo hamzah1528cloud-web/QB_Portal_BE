@@ -16,6 +16,6 @@ export class QbInvoiceDAO extends BaseDAO<QbInvoiceDocument, QbInvoiceDTO> {
   }
 
   async findAllByBusiness(businessId: string): Promise<QbInvoiceDocument[]> {
-    return this.model.find({ businessId }).sort({ createdAt: -1 }).lean().exec() as Promise<QbInvoiceDocument[]>;
+    return this.model.find({ businessId }).sort({ createdAt: -1 }).lean().exec() as unknown as Promise<QbInvoiceDocument[]>;
   }
 }

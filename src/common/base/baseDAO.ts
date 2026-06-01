@@ -67,7 +67,7 @@ export abstract class BaseDAO<T extends Document, U> {
 
   async updateById(id: string, update: Partial<U>, options?: TransactionOptions): Promise<T> {
     const document = await this.model
-      .findByIdAndUpdate(id, { $set: update }, { new: true, session: options?.session })
+      .findByIdAndUpdate(id, { $set: update } as any, { new: true, session: options?.session })
       .select('-__v')
       .lean()
       .exec();
@@ -121,7 +121,7 @@ export abstract class BaseDAO<T extends Document, U> {
 
   async upsert(filter: FilterQuery<T>, update: Partial<U>, options?: TransactionOptions): Promise<T> {
     const document = await this.model
-      .findOneAndUpdate(filter, { $set: update }, { upsert: true, new: true, session: options?.session })
+      .findOneAndUpdate(filter, { $set: update } as any, { upsert: true, new: true, session: options?.session })
       .select('-__v')
       .lean()
       .exec();

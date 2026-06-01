@@ -16,6 +16,6 @@ export class QbProductDAO extends BaseDAO<QbProductDocument, QbProductDTO> {
   }
 
   async findAllByBusiness(businessId: string): Promise<QbProductDocument[]> {
-    return this.model.find({ businessId, isActive: true }).lean().exec() as Promise<QbProductDocument[]>;
+    return this.model.find({ businessId, isActive: true }).lean().exec() as unknown as Promise<QbProductDocument[]>;
   }
 }
