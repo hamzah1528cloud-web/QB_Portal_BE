@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcryptjs';
 import { BusinessDAO } from 'src/business/daos/business.dao';
 import { QuickBooksClient } from 'src/external/quickbooks/quickbooks.client';
 import { SyncService } from 'src/sync/services/sync.service';
@@ -7,7 +8,7 @@ import { CustomError } from 'src/common/errors/api.error';
 import { ApiErrorCode } from 'src/common/enums/codes/api-error.enum';
 import { ApiErrorSubCode } from 'src/common/enums/codes/api-error-subcode.enum';
 import { HttpStatusCode } from 'src/common/enums/codes/http-error-code.enum';
-import { QbConnectionStatusDTO } from '../dtos/auth.dto';
+import { AuthResponseDTO, QbConnectionStatusDTO } from '../dtos/auth.dto';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -22,11 +23,39 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  generateQbAuthUrl(businessId: string): string {
+  async register(name: string, email: string, password: string): Promise<AuthResponseDTO> {
+    const existing = await this.businessDAO.findByEmail(email);
+    if (existing) {
+      throw new CustomError('An account with this email already exists', HttpStatusCode.CONFLICT, ApiErrorCode.AUTH, ApiErrorSubCode.CONFLICT);
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const business = await this.businessDAO.create({ name, email, passwordHash } as any);
+
+    const token = await this.jwtService.signAsync({ businessId: (business as any).id, email });
+    return { token, businessId: (business as any).id, name, email };
+  }
+
+  async login(email: string, password: string): Promise<AuthResponseDTO> {
+    const business = await this.businessDAO.findByEmail(email);
+    if (!business) {
+      throw new CustomError('Invalid email or password', HttpStatusCode.UNAUTHORIZED, ApiErrorCode.AUTH, ApiErrorSubCode.UNAUTHORIZED);
+    }
+
+    const valid = await bcrypt.compare(password, (business as any).passwordHash);
+    if (!valid) {
+      throw new CustomError('Invalid email or password', HttpStatusCode.UNAUTHORIZED, ApiErrorCode.AUTH, ApiErrorSubCode.UNAUTHORIZED);
+    }
+
+    const token = await this.jwtService.signAsync({ businessId: (business as any).id, email });
+    return { token, businessId: (business as any).id, name: (business as any).name, email };
+  }
+
+  getQbConnectUrl(businessId: string): { url: string } {
     const state = crypto.randomBytes(16).toString('hex');
     this.stateStore.set(state, businessId);
     setTimeout(() => this.stateStore.delete(state), 10 * 60 * 1000);
-    return this.qbClient.buildAuthUrl(state);
+    return { url: this.qbClient.buildAuthUrl(state) };
   }
 
   async handleQbCallback(code: string, realmId: string, state: string): Promise<void> {
@@ -72,9 +101,5 @@ export class AuthService {
     }
     await this.businessDAO.clearQbTokens(businessId);
     this.logger.log(`QB disconnected for business ${businessId}`);
-  }
-
-  async signToken(businessId: string, email: string): Promise<string> {
-    return this.jwtService.signAsync({ businessId, email });
   }
 }

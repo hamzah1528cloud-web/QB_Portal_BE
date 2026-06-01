@@ -9,7 +9,7 @@ import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
   imports: [
     JwtModule.register({
       secret: JWT_SECRET,
-      signOptions: { expiresIn: JWT_EXPIRES_IN },
+      signOptions: { expiresIn: JWT_EXPIRES_IN as any },
     }),
   ],
   providers: [AppLoggerService, JwtAuthGuard],

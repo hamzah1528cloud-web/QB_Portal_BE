@@ -1,29 +1,39 @@
-import { Controller, Delete, Get, Query, Redirect, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Query, Redirect, Request, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/security/guards/jwt-auth.guard';
 import { SkipResultInterceptor } from 'src/common/decorators/skip-result-interceptor.decorator';
 import { FRONTEND_URL } from 'src/common/config/secrets';
 import { AuthService } from '../services/auth.service';
+import { LoginDTO, RegisterDTO } from '../dtos/auth.dto';
 
-@ApiTags('Auth - QuickBooks')
-@Controller({ path: 'auth/quickbooks', version: '1' })
+@ApiTags('Auth')
+@Controller({ path: 'auth', version: '1' })
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Get()
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard)
-  @SkipResultInterceptor()
-  @ApiOperation({ summary: 'Redirect to QuickBooks OAuth consent screen' })
-  @Redirect()
-  initiateQbOAuth(@Request() req: any) {
-    const url = this.authService.generateQbAuthUrl(req.businessId);
-    return { url };
+  @Post('register')
+  @ApiOperation({ summary: 'Register a new business account' })
+  async register(@Body() dto: RegisterDTO) {
+    return this.authService.register(dto.name, dto.email, dto.password);
   }
 
-  @Get('callback')
+  @Post('login')
+  @ApiOperation({ summary: 'Login and receive a JWT token' })
+  async login(@Body() dto: LoginDTO) {
+    return this.authService.login(dto.email, dto.password);
+  }
+
+  @Get('quickbooks/connect-url')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get the QuickBooks OAuth consent URL' })
+  getQbConnectUrl(@Request() req: any) {
+    return this.authService.getQbConnectUrl(req.businessId);
+  }
+
+  @Get('quickbooks/callback')
   @SkipResultInterceptor()
-  @ApiOperation({ summary: 'Handle Intuit OAuth callback, exchange code for tokens' })
+  @ApiOperation({ summary: 'Intuit OAuth callback — exchange code for tokens' })
   @Redirect()
   async handleCallback(
     @Query('code') code: string,
@@ -31,10 +41,10 @@ export class AuthController {
     @Query('state') state: string,
   ) {
     await this.authService.handleQbCallback(code, realmId, state);
-    return { url: `${FRONTEND_URL}/dashboard?qb=connected` };
+    return { url: `${FRONTEND_URL}/sync?qb=connected` };
   }
 
-  @Get('status')
+  @Get('quickbooks/status')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get QuickBooks connection status' })
@@ -42,7 +52,7 @@ export class AuthController {
     return this.authService.getQbStatus(req.businessId);
   }
 
-  @Delete('disconnect')
+  @Delete('quickbooks/disconnect')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Disconnect QuickBooks and revoke tokens' })
