@@ -8,6 +8,6 @@ export class AppController {
   @Get('health')
   @SkipResultInterceptor()
   health() {
-    return { status: 'ok', version: 'cicd-live-1', timestamp: new Date().toISOString() };
+    return { status: 'ok', timestamp: new Date().toISOString() };
   }
 }
