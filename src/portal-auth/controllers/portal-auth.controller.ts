@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, MinLength } from 'class-validator';
 import { PortalJwtAuthGuard } from 'src/common/security/guards/portal-jwt.guard';
 import { PortalAuthService } from '../services/portal-auth.service';
-import { PortalRegisterDTO, PortalLoginDTO } from '../dtos/portal-auth.dto';
+import { PortalLoginDTO } from '../dtos/portal-auth.dto';
 
 class ChangePasswordDTO {
   @IsString() @IsNotEmpty() currentPassword: string;
@@ -15,14 +15,8 @@ class ChangePasswordDTO {
 export class PortalAuthController {
   constructor(private readonly portalAuthService: PortalAuthService) {}
 
-  @Post('register')
-  @ApiOperation({ summary: 'Register a portal customer account' })
-  async register(@Body() dto: PortalRegisterDTO) {
-    return this.portalAuthService.register(dto);
-  }
-
   @Post('login')
-  @ApiOperation({ summary: 'Portal customer login' })
+  @ApiOperation({ summary: 'Portal customer login — username + password only' })
   async login(@Body() dto: PortalLoginDTO) {
     return this.portalAuthService.login(dto);
   }

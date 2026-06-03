@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { BaseDAO } from 'src/common/base/baseDAO';
+import { mapDoc, mapDocs } from 'src/common/utils/db.utils';
 import { QbCreditMemo, QbCreditMemoDocument } from '../schemas/qb-credit-memo.schema';
 import { QbCreditMemoDTO } from '../dtos/qb-credit-memo.dto';
 
@@ -19,19 +20,19 @@ export class QbCreditMemoDAO extends BaseDAO<QbCreditMemoDocument, QbCreditMemoD
     const skip = (page - 1) * limit;
     const filter = { businessId, qbCustomerId };
     const [data, total] = await Promise.all([
-      this.model.find(filter).sort({ txnDate: -1 }).skip(skip).limit(limit).lean({ virtuals: true }).exec(),
+      this.model.find(filter).sort({ txnDate: -1 }).skip(skip).limit(limit).lean().exec(),
       this.model.countDocuments(filter).exec(),
     ]);
-    return { data: data as unknown as QbCreditMemoDocument[], total, page, limit, totalPages: Math.ceil(total / limit) };
+    return { data: mapDocs<QbCreditMemoDocument>(data), total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findAllByBusiness(businessId: string, page: number, limit: number) {
     const skip = (page - 1) * limit;
     const filter = { businessId };
     const [data, total] = await Promise.all([
-      this.model.find(filter).sort({ txnDate: -1 }).skip(skip).limit(limit).lean({ virtuals: true }).exec(),
+      this.model.find(filter).sort({ txnDate: -1 }).skip(skip).limit(limit).lean().exec(),
       this.model.countDocuments(filter).exec(),
     ]);
-    return { data: data as unknown as QbCreditMemoDocument[], total, page, limit, totalPages: Math.ceil(total / limit) };
+    return { data: mapDocs<QbCreditMemoDocument>(data), total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 }

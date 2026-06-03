@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { BaseDAO } from 'src/common/base/baseDAO';
+import { mapDoc, mapDocs } from 'src/common/utils/db.utils';
 import { QbProduct, QbProductDocument } from '../schemas/qb-product.schema';
 import { QbProductDTO } from '../dtos/qb-product.dto';
 
@@ -16,17 +17,17 @@ export class QbProductDAO extends BaseDAO<QbProductDocument, QbProductDTO> {
   }
 
   async findByIdAndBusiness(id: string, businessId: string): Promise<QbProductDocument | null> {
-    const doc = await this.model.findOne({ _id: id, businessId }).lean({ virtuals: true }).exec();
-    return doc as unknown as QbProductDocument | null;
+    const doc = await this.model.findOne({ _id: id, businessId }).lean().exec();
+    return mapDoc<QbProductDocument>(doc);
   }
 
   async findAllByBusiness(businessId: string, page: number, limit: number) {
     const skip = (page - 1) * limit;
     const filter = { businessId, isActive: true };
     const [data, total] = await Promise.all([
-      this.model.find(filter).sort({ name: 1 }).skip(skip).limit(limit).lean({ virtuals: true }).exec(),
+      this.model.find(filter).sort({ name: 1 }).skip(skip).limit(limit).lean().exec(),
       this.model.countDocuments(filter).exec(),
     ]);
-    return { data: data as unknown as QbProductDocument[], total, page, limit, totalPages: Math.ceil(total / limit) };
+    return { data: mapDocs<QbProductDocument>(data), total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 }
