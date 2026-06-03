@@ -9,8 +9,14 @@ export class PortalUser extends BaseSchema {
   @Prop({ required: true, type: Types.ObjectId, ref: 'Business' })
   businessId: Types.ObjectId;
 
+  @Prop({ required: true, unique: true })
+  username: string;
+
   @Prop({ required: false })
   qbCustomerId: string;
+
+  @Prop({ required: false })
+  qbCustomerName: string;
 
   @Prop({ required: true })
   name: string;
@@ -27,3 +33,4 @@ export class PortalUser extends BaseSchema {
 
 export const PortalUserSchema = SchemaFactory.createForClass(PortalUser);
 PortalUserSchema.index({ businessId: 1, email: 1 }, { unique: true });
+PortalUserSchema.index({ username: 1 }, { unique: true });
