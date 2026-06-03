@@ -15,6 +15,9 @@ import { SyncModule } from './sync/sync.module';
 import { QbCustomerModule } from './qb-customer/qb-customer.module';
 import { QbProductModule } from './qb-product/qb-product.module';
 import { QbInvoiceModule } from './qb-invoice/qb-invoice.module';
+import { QbPaymentModule } from './qb-payment/qb-payment.module';
+import { QbCreditMemoModule } from './qb-credit-memo/qb-credit-memo.module';
+import { QbTaxCodeModule } from './qb-tax-code/qb-tax-code.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -32,6 +35,9 @@ import { AppService } from './app.service';
     QbCustomerModule,
     QbProductModule,
     QbInvoiceModule,
+    QbPaymentModule,
+    QbCreditMemoModule,
+    QbTaxCodeModule,
   ],
   controllers: [AppController],
   providers: [

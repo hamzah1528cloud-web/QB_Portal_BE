@@ -2,26 +2,26 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { BaseDAO } from 'src/common/base/baseDAO';
-import { QbCustomer, QbCustomerDocument } from '../schemas/qb-customer.schema';
-import { QbCustomerDTO } from '../dtos/qb-customer.dto';
+import { QbTaxCode, QbTaxCodeDocument } from '../schemas/qb-tax-code.schema';
+import { QbTaxCodeDTO } from '../dtos/qb-tax-code.dto';
 
 @Injectable()
-export class QbCustomerDAO extends BaseDAO<QbCustomerDocument, QbCustomerDTO> {
-  constructor(@InjectModel(QbCustomer.name) model: Model<QbCustomerDocument>) {
+export class QbTaxCodeDAO extends BaseDAO<QbTaxCodeDocument, QbTaxCodeDTO> {
+  constructor(@InjectModel(QbTaxCode.name) model: Model<QbTaxCodeDocument>) {
     super(model);
   }
 
-  async upsertByQbId(businessId: string, qbId: string, data: Partial<QbCustomerDTO>): Promise<QbCustomerDocument> {
+  async upsertByQbId(businessId: string, qbId: string, data: Partial<QbTaxCodeDTO>): Promise<QbTaxCodeDocument> {
     return this.upsert({ businessId, qbId }, { ...data, businessId, qbId, lastSyncedAt: new Date() } as any);
   }
 
   async findAllByBusiness(businessId: string, page: number, limit: number) {
     const skip = (page - 1) * limit;
-    const filter = { businessId, isActive: true };
+    const filter = { businessId };
     const [data, total] = await Promise.all([
       this.model.find(filter).sort({ name: 1 }).skip(skip).limit(limit).lean({ virtuals: true }).exec(),
       this.model.countDocuments(filter).exec(),
     ]);
-    return { data: data as unknown as QbCustomerDocument[], total, page, limit, totalPages: Math.ceil(total / limit) };
+    return { data: data as unknown as QbTaxCodeDocument[], total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 }

@@ -5,7 +5,7 @@ import { QbInvoiceDAO } from '../daos/qb-invoice.dao';
 export class QbInvoiceService {
   constructor(private readonly qbInvoiceDAO: QbInvoiceDAO) {}
 
-  async findAllByBusiness(businessId: string) {
-    return this.qbInvoiceDAO.findAllByBusiness(businessId);
+  async findAllByBusiness(businessId: string, page: number, limit: number) {
+    return this.qbInvoiceDAO.findAllByBusiness(businessId, page, limit);
   }
 }
