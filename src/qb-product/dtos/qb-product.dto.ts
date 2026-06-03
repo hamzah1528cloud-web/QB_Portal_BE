@@ -9,6 +9,11 @@ export class QbProductDTO {
   stockQuantity: number;
   unitOfMeasure?: string;
   taxCode?: string;
+  itemType?: string;
+  purchaseCost?: number;
+  purchaseDescription?: string;
+  incomeAccountName?: string;
+  expenseAccountName?: string;
   isActive: boolean;
   lastSyncedAt?: Date;
   createdAt: Date;

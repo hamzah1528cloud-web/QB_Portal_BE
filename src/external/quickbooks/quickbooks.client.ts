@@ -87,6 +87,43 @@ export class QuickBooksClient {
     });
   }
 
+  async createInvoice(
+    accessToken: string,
+    realmId: string,
+    payload: {
+      qbCustomerId: string;
+      lineItems: { qbItemId: string; quantity: number; unitPrice: number; amount: number; description?: string }[];
+      customerMemo?: string;
+    },
+  ): Promise<{ Id: string; DocNumber?: string; TotalAmt?: number; Balance?: number; TxnDate?: string; DueDate?: string }> {
+    const client = this.buildApiClient(accessToken, realmId);
+    try {
+      const body = {
+        CustomerRef: { value: payload.qbCustomerId },
+        Line: payload.lineItems.map((l) => ({
+          DetailType: 'SalesItemLineDetail',
+          Amount: l.amount,
+          Description: l.description,
+          SalesItemLineDetail: {
+            ItemRef: { value: l.qbItemId },
+            Qty: l.quantity,
+            UnitPrice: l.unitPrice,
+          },
+        })),
+        ...(payload.customerMemo ? { CustomerMemo: { value: payload.customerMemo } } : {}),
+      };
+      const response = await client.post('/invoice?minorversion=70', body);
+      return response.data.Invoice;
+    } catch (err) {
+      const status = err.response?.status;
+      if (status === 401) {
+        throw new CustomError('QB access token expired', HttpStatusCode.UNAUTHORIZED, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_TOKEN_EXPIRED);
+      }
+      this.logger.error(`QB createInvoice failed: ${err.response?.data?.Fault?.Error?.[0]?.Message || err.message}`);
+      throw new CustomError('Failed to create QuickBooks invoice', HttpStatusCode.INTERNAL_SERVER_ERROR, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_API_ERROR);
+    }
+  }
+
   async query<T>(accessToken: string, realmId: string, query: string): Promise<T> {
     const client = this.buildApiClient(accessToken, realmId);
     try {

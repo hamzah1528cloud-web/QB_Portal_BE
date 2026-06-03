@@ -3,6 +3,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { JWT_EXPIRES_IN, JWT_SECRET } from '../config/secrets';
 import { AppLoggerService } from '../logger/logger.service';
 import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
+import { PortalJwtAuthGuard } from '../security/guards/portal-jwt.guard';
+import { CombinedAuthGuard } from '../security/guards/combined-auth.guard';
 
 @Global()
 @Module({
@@ -12,7 +14,7 @@ import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
       signOptions: { expiresIn: JWT_EXPIRES_IN as any },
     }),
   ],
-  providers: [AppLoggerService, JwtAuthGuard],
-  exports: [JwtModule, AppLoggerService, JwtAuthGuard],
+  providers: [AppLoggerService, JwtAuthGuard, PortalJwtAuthGuard, CombinedAuthGuard],
+  exports: [JwtModule, AppLoggerService, JwtAuthGuard, PortalJwtAuthGuard, CombinedAuthGuard],
 })
 export class SharedModule {}
