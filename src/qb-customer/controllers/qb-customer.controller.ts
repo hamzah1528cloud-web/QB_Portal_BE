@@ -1,16 +1,17 @@
 import { Controller, Get, Param, Query, Request, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/security/guards/jwt-auth.guard';
+import { CombinedAuthGuard } from 'src/common/security/guards/combined-auth.guard';
 import { QbCustomerService } from '../services/qb-customer.service';
 
 @ApiTags('QB Customers')
 @ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard)
 @Controller({ path: 'qb-customers', version: '1' })
 export class QbCustomerController {
   constructor(private readonly qbCustomerService: QbCustomerService) {}
 
   @Get()
+  @UseGuards(CombinedAuthGuard)
   @ApiOperation({ summary: 'Get paginated customers synced from QuickBooks' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -19,6 +20,7 @@ export class QbCustomerController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get a single customer by ID' })
   async findOne(@Request() req: any, @Param('id') id: string) {
     return this.qbCustomerService.findByIdAndBusiness(id, req.businessId);
