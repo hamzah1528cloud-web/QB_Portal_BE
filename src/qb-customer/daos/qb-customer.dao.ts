@@ -15,6 +15,11 @@ export class QbCustomerDAO extends BaseDAO<QbCustomerDocument, QbCustomerDTO> {
     return this.upsert({ businessId, qbId }, { ...data, businessId, qbId, lastSyncedAt: new Date() } as any);
   }
 
+  async findByQbId(businessId: string, qbId: string): Promise<QbCustomerDocument | null> {
+    const doc = await this.model.findOne({ businessId, qbId }).lean({ virtuals: true }).exec();
+    return doc as unknown as QbCustomerDocument | null;
+  }
+
   async findByIdAndBusiness(id: string, businessId: string): Promise<QbCustomerDocument | null> {
     const doc = await this.model.findOne({ _id: id, businessId }).lean({ virtuals: true }).exec();
     return doc as unknown as QbCustomerDocument | null;

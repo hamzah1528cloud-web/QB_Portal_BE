@@ -29,6 +29,7 @@ export class PortalJwtAuthGuard implements CanActivate {
 
       request.portalUserId = payload.portalUserId;
       request.businessId = payload.businessId;
+      request.qbCustomerId = payload.qbCustomerId || null;
       return true;
     } catch (err) {
       if (err instanceof CustomError) throw err;
