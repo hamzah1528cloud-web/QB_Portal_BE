@@ -13,7 +13,7 @@ export class SyncProcessor {
   @Process(QbSyncJob.FULL_SYNC)
   async handleFullSync(job: Job<{ businessId: string }>): Promise<void> {
     const { businessId } = job.data;
-    this.logger.log(`[Processor] Starting full sync for business ${businessId} (attempt ${job.attemptsMade + 1})`);
+    this.logger.log(`[Processor] Full sync for business ${businessId} (attempt ${job.attemptsMade + 1})`);
     try {
       const result = await this.syncService.runFullSync(businessId);
       this.logger.log(`[Processor] Full sync done: ${JSON.stringify(result)}`);
@@ -21,5 +21,35 @@ export class SyncProcessor {
       this.logger.error(`[Processor] Full sync failed for business ${businessId}: ${err.message}`);
       throw err;
     }
+  }
+
+  @Process(QbSyncJob.SYNC_CUSTOMERS)
+  async handleSyncCustomers(job: Job<{ businessId: string }>): Promise<void> {
+    await this.syncService.runTargetedSync(job.data.businessId, 'customers');
+  }
+
+  @Process(QbSyncJob.SYNC_PRODUCTS)
+  async handleSyncProducts(job: Job<{ businessId: string }>): Promise<void> {
+    await this.syncService.runTargetedSync(job.data.businessId, 'products');
+  }
+
+  @Process(QbSyncJob.SYNC_INVOICES)
+  async handleSyncInvoices(job: Job<{ businessId: string }>): Promise<void> {
+    await this.syncService.runTargetedSync(job.data.businessId, 'invoices');
+  }
+
+  @Process(QbSyncJob.SYNC_PAYMENTS)
+  async handleSyncPayments(job: Job<{ businessId: string }>): Promise<void> {
+    await this.syncService.runTargetedSync(job.data.businessId, 'payments');
+  }
+
+  @Process(QbSyncJob.SYNC_CREDIT_MEMOS)
+  async handleSyncCreditMemos(job: Job<{ businessId: string }>): Promise<void> {
+    await this.syncService.runTargetedSync(job.data.businessId, 'creditMemos');
+  }
+
+  @Process(QbSyncJob.SYNC_TAX_CODES)
+  async handleSyncTaxCodes(job: Job<{ businessId: string }>): Promise<void> {
+    await this.syncService.runTargetedSync(job.data.businessId, 'taxCodes');
   }
 }

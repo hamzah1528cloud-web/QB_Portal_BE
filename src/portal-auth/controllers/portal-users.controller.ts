@@ -20,10 +20,26 @@ export class PortalUsersController {
 
   @Get()
   @ApiOperation({ summary: 'List all portal users for this business' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  async list(@Request() req: any, @Query('page') page = '1', @Query('limit') limit = '20') {
-    return this.portalAuthService.listByBusiness(req.businessId, Math.max(1, parseInt(page)), Math.min(100, Math.max(1, parseInt(limit))));
+  @ApiQuery({ name: 'page',     required: false, type: Number })
+  @ApiQuery({ name: 'limit',    required: false, type: Number })
+  @ApiQuery({ name: 'search',   required: false, type: String })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  async list(
+    @Request() req: any,
+    @Query('page')     page     = '1',
+    @Query('limit')    limit    = '20',
+    @Query('search')   search?:   string,
+    @Query('isActive') isActive?: string,
+  ) {
+    return this.portalAuthService.listByBusiness(
+      req.businessId,
+      Math.max(1, parseInt(page)),
+      Math.min(100, Math.max(1, parseInt(limit))),
+      {
+        search,
+        isActive: isActive === undefined ? undefined : isActive === 'true',
+      },
+    );
   }
 
   @Post()

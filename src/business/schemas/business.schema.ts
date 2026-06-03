@@ -38,6 +38,12 @@ export class Business extends BaseSchema {
 
   @Prop({ default: false })
   isQbConnected: boolean;
+
+  @Prop({ required: false })
+  refreshTokenHash: string;
+
+  @Prop({ required: false })
+  refreshTokenExpiresAt: Date;
 }
 
 export const BusinessSchema = SchemaFactory.createForClass(Business);

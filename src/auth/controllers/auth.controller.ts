@@ -4,7 +4,7 @@ import { JwtAuthGuard } from 'src/common/security/guards/jwt-auth.guard';
 import { SkipResultInterceptor } from 'src/common/decorators/skip-result-interceptor.decorator';
 import { FRONTEND_URL } from 'src/common/config/secrets';
 import { AuthService } from '../services/auth.service';
-import { LoginDTO, RegisterDTO } from '../dtos/auth.dto';
+import { LoginDTO, RegisterDTO, RefreshDTO } from '../dtos/auth.dto';
 
 @ApiTags('Auth')
 @Controller({ path: 'auth', version: '1' })
@@ -18,9 +18,24 @@ export class AuthController {
   }
 
   @Post('login')
-  @ApiOperation({ summary: 'Login and receive a JWT token' })
+  @ApiOperation({ summary: 'Login — returns accessToken + refreshToken' })
   async login(@Body() dto: LoginDTO) {
     return this.authService.login(dto.email, dto.password);
+  }
+
+  @Post('refresh')
+  @ApiOperation({ summary: 'Exchange a refresh token for a new access token' })
+  async refresh(@Body() dto: RefreshDTO) {
+    return this.authService.refresh(dto.refreshToken);
+  }
+
+  @Post('logout')
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Logout — invalidates the refresh token' })
+  async logout(@Request() req: any) {
+    await this.authService.logout(req.businessId);
+    return { message: 'Logged out successfully' };
   }
 
   @Get('quickbooks/connect-url')

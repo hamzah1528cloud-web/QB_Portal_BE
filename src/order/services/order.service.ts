@@ -37,8 +37,8 @@ export class OrderService {
     } as any);
   }
 
-  async findAllByBusiness(businessId: string, page: number, limit: number) {
-    return this.orderDAO.findPaginatedByBusiness(businessId, page, limit);
+  async findAllByBusiness(businessId: string, page: number, limit: number, filters?: { status?: string; search?: string }) {
+    return this.orderDAO.findPaginatedByBusiness(businessId, page, limit, filters);
   }
 
   async findByIdAndBusiness(id: string, businessId: string) {
@@ -49,8 +49,8 @@ export class OrderService {
     return order;
   }
 
-  async findAllByPortalUser(businessId: string, portalUserId: string, page: number, limit: number) {
-    return this.orderDAO.findPaginatedByPortalUser(businessId, portalUserId, page, limit);
+  async findAllByPortalUser(businessId: string, portalUserId: string, page: number, limit: number, filters?: { status?: string }) {
+    return this.orderDAO.findPaginatedByPortalUser(businessId, portalUserId, page, limit, filters);
   }
 
   async findByIdAndPortalUser(id: string, businessId: string, portalUserId: string) {

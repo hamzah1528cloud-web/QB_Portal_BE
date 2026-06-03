@@ -26,6 +26,18 @@ export class BusinessDAO extends BaseDAO<BusinessDocument, BusinessDTO> {
     return this.updateById(businessId, data as any);
   }
 
+  async storeRefreshToken(businessId: string, hash: string, expiresAt: Date): Promise<void> {
+    await this.updateById(businessId, { refreshTokenHash: hash, refreshTokenExpiresAt: expiresAt } as any);
+  }
+
+  async findByRefreshTokenHash(hash: string): Promise<BusinessDocument | null> {
+    return this.findOne({ refreshTokenHash: hash, refreshTokenExpiresAt: { $gt: new Date() } });
+  }
+
+  async clearRefreshToken(businessId: string): Promise<void> {
+    await this.updateById(businessId, { refreshTokenHash: null, refreshTokenExpiresAt: null } as any);
+  }
+
   async clearQbTokens(businessId: string): Promise<BusinessDocument> {
     return this.updateById(businessId, {
       qbAccessToken: null,

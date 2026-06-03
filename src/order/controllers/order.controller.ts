@@ -16,10 +16,23 @@ export class OrderController {
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'List all orders for this business' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  async findAll(@Request() req: any, @Query('page') page = '1', @Query('limit') limit = '20') {
-    return this.orderService.findAllByBusiness(req.businessId, Math.max(1, parseInt(page)), Math.min(100, Math.max(1, parseInt(limit))));
+  @ApiQuery({ name: 'page',   required: false, type: Number })
+  @ApiQuery({ name: 'limit',  required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  async findAll(
+    @Request() req: any,
+    @Query('page')   page   = '1',
+    @Query('limit')  limit  = '20',
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.orderService.findAllByBusiness(
+      req.businessId,
+      Math.max(1, parseInt(page)),
+      Math.min(100, Math.max(1, parseInt(limit))),
+      { status, search },
+    );
   }
 
   @Get('orders/:id')
@@ -52,10 +65,22 @@ export class OrderController {
   @ApiBearerAuth('access-token')
   @UseGuards(PortalJwtAuthGuard)
   @ApiOperation({ summary: 'Portal: list customer own orders' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  async portalFindAll(@Request() req: any, @Query('page') page = '1', @Query('limit') limit = '20') {
-    return this.orderService.findAllByPortalUser(req.businessId, req.portalUserId, Math.max(1, parseInt(page)), Math.min(100, Math.max(1, parseInt(limit))));
+  @ApiQuery({ name: 'page',   required: false, type: Number })
+  @ApiQuery({ name: 'limit',  required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  async portalFindAll(
+    @Request() req: any,
+    @Query('page')   page   = '1',
+    @Query('limit')  limit  = '20',
+    @Query('status') status?: string,
+  ) {
+    return this.orderService.findAllByPortalUser(
+      req.businessId,
+      req.portalUserId,
+      Math.max(1, parseInt(page)),
+      Math.min(100, Math.max(1, parseInt(limit))),
+      { status },
+    );
   }
 
   @Get('portal/orders/:id')

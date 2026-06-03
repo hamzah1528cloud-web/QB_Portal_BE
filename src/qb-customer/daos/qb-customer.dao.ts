@@ -26,9 +26,15 @@ export class QbCustomerDAO extends BaseDAO<QbCustomerDocument, QbCustomerDTO> {
     return mapDoc<QbCustomerDocument>(doc);
   }
 
-  async findAllByBusiness(businessId: string, page: number, limit: number) {
+  async findAllByBusiness(businessId: string, page: number, limit: number, search?: string) {
     const skip = (page - 1) * limit;
-    const filter = { businessId, isActive: true };
+    const filter: any = { businessId, isActive: true };
+
+    if (search?.trim()) {
+      const re = new RegExp(search.trim(), 'i');
+      filter.$or = [{ name: re }, { email: re }];
+    }
+
     const [data, total] = await Promise.all([
       this.model.find(filter).sort({ name: 1 }).skip(skip).limit(limit).lean().exec(),
       this.model.countDocuments(filter).exec(),

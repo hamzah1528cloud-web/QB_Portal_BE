@@ -27,10 +27,16 @@ export class LoginDTO {
 }
 
 export class AuthResponseDTO {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
   businessId: string;
   name: string;
   email: string;
+}
+
+export class RefreshDTO {
+  @IsString()
+  refreshToken: string;
 }
 
 export class QbConnectionStatusDTO {
