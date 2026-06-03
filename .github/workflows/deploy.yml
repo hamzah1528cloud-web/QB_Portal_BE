@@ -62,8 +62,10 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Sync env ConfigMap
+        env:
+          ENV_PROD: ${{ vars.ENV_PROD }}
         run: |
-          printf '%s' "${{ secrets.ENV_PROD }}" > .env.prod
+          printf '%s' "$ENV_PROD" > .env.prod
           kubectl -n "$NAMESPACE" create configmap qb-env-config \
             --from-env-file=.env.prod \
             --dry-run=client -o yaml | kubectl apply -f -
