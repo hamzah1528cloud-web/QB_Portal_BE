@@ -12,6 +12,9 @@ import { QB_SYNC_QUEUE, QbSyncJob } from '../constants/queue.constants';
 import { QbCustomersSyncService } from './qb-customers-sync.service';
 import { QbProductsSyncService } from './qb-products-sync.service';
 import { QbInvoicesSyncService } from './qb-invoices-sync.service';
+import { QbPaymentsSyncService } from './qb-payments-sync.service';
+import { QbCreditMemosSyncService } from './qb-credit-memos-sync.service';
+import { QbTaxCodesSyncService } from './qb-tax-codes-sync.service';
 
 @Injectable()
 export class SyncService {
@@ -24,6 +27,9 @@ export class SyncService {
     private readonly customersSyncService: QbCustomersSyncService,
     private readonly productsSyncService: QbProductsSyncService,
     private readonly invoicesSyncService: QbInvoicesSyncService,
+    private readonly paymentsSyncService: QbPaymentsSyncService,
+    private readonly creditMemosSyncService: QbCreditMemosSyncService,
+    private readonly taxCodesSyncService: QbTaxCodesSyncService,
   ) {}
 
   async enqueueSyncForBusiness(businessId: string): Promise<void> {
@@ -31,7 +37,7 @@ export class SyncService {
     this.logger.log(`[Sync] Enqueued full sync for business ${businessId}`);
   }
 
-  async runFullSync(businessId: string): Promise<{ customers: number; products: number; invoices: number }> {
+  async runFullSync(businessId: string): Promise<{ customers: number; products: number; invoices: number; payments: number; creditMemos: number; taxCodes: number }> {
     const business = await this.businessDAO.findById(businessId);
 
     if (!business.isQbConnected) {
@@ -55,15 +61,18 @@ export class SyncService {
       qbAccessToken = tokens.access_token;
     }
 
-    const [customers, products, invoices] = await Promise.all([
+    const [customers, products, invoices, payments, creditMemos, taxCodes] = await Promise.all([
       this.customersSyncService.syncAll(businessId, qbAccessToken, qbRealmId),
       this.productsSyncService.syncAll(businessId, qbAccessToken, qbRealmId),
       this.invoicesSyncService.syncAll(businessId, qbAccessToken, qbRealmId),
+      this.paymentsSyncService.syncAll(businessId, qbAccessToken, qbRealmId),
+      this.creditMemosSyncService.syncAll(businessId, qbAccessToken, qbRealmId),
+      this.taxCodesSyncService.syncAll(businessId, qbAccessToken, qbRealmId),
     ]);
 
     await this.businessDAO.updateById(businessId, { qbLastSyncedAt: new Date() } as any);
 
-    this.logger.log(`[Sync] Full sync complete for business ${businessId}: ${customers} customers, ${products} products, ${invoices} invoices`);
-    return { customers, products, invoices };
+    this.logger.log(`[Sync] Full sync complete for business ${businessId}: ${customers} customers, ${products} products, ${invoices} invoices, ${payments} payments, ${creditMemos} credit memos, ${taxCodes} tax codes`);
+    return { customers, products, invoices, payments, creditMemos, taxCodes };
   }
 }

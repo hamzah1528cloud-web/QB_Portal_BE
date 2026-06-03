@@ -15,7 +15,13 @@ export class QbProductDAO extends BaseDAO<QbProductDocument, QbProductDTO> {
     return this.upsert({ businessId, qbId }, { ...data, businessId, qbId, lastSyncedAt: new Date() } as any);
   }
 
-  async findAllByBusiness(businessId: string): Promise<QbProductDocument[]> {
-    return this.model.find({ businessId, isActive: true }).lean().exec() as unknown as Promise<QbProductDocument[]>;
+  async findAllByBusiness(businessId: string, page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    const filter = { businessId, isActive: true };
+    const [data, total] = await Promise.all([
+      this.model.find(filter).sort({ name: 1 }).skip(skip).limit(limit).lean({ virtuals: true }).exec(),
+      this.model.countDocuments(filter).exec(),
+    ]);
+    return { data: data as unknown as QbProductDocument[], total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 }
