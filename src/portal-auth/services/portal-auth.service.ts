@@ -48,11 +48,11 @@ export class PortalAuthService {
   }
 
   // Business owner creates a portal user
-  async createByBusiness(businessId: string, dto: { name: string; email: string; password: string; qbCustomerId?: string }): Promise<any> {
+  async createByBusiness(businessId: string, dto: { name: string; email: string; password: string; qbCustomerId?: string; qbCustomerName?: string }): Promise<any> {
     const existing = await this.portalUserDAO.findByBusinessAndEmail(businessId, dto.email);
     if (existing) throw new CustomError('A portal user with this email already exists', HttpStatusCode.CONFLICT, ApiErrorCode.AUTH, ApiErrorSubCode.CONFLICT);
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const user = await this.portalUserDAO.create({ businessId: businessId as any, name: dto.name, email: dto.email, passwordHash, qbCustomerId: dto.qbCustomerId, isActive: true } as any);
+    const user = await this.portalUserDAO.create({ businessId: businessId as any, name: dto.name, email: dto.email, passwordHash, qbCustomerId: dto.qbCustomerId, qbCustomerName: dto.qbCustomerName, isActive: true } as any);
     const { passwordHash: _, ...safe } = user as any;
     return safe;
   }

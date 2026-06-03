@@ -12,6 +12,9 @@ export class PortalUser extends BaseSchema {
   @Prop({ required: false })
   qbCustomerId: string;
 
+  @Prop({ required: false })
+  qbCustomerName: string;
+
   @Prop({ required: true })
   name: string;
 

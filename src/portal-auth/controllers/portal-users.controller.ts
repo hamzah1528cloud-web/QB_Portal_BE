@@ -9,6 +9,7 @@ class CreatePortalUserDTO {
   @IsEmail() email: string;
   @IsString() @MinLength(8) password: string;
   @IsOptional() @IsString() qbCustomerId?: string;
+  @IsOptional() @IsString() qbCustomerName?: string;
 }
 
 class ResetPasswordDTO {
