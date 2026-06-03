@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Query, Request, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/common/security/guards/jwt-auth.guard';
 import { CombinedAuthGuard } from 'src/common/security/guards/combined-auth.guard';
+import { JwtAuthGuard } from 'src/common/security/guards/jwt-auth.guard';
 import { QbCustomerService } from '../services/qb-customer.service';
 
 @ApiTags('QB Customers')
@@ -13,10 +13,21 @@ export class QbCustomerController {
   @Get()
   @UseGuards(CombinedAuthGuard)
   @ApiOperation({ summary: 'Get paginated customers synced from QuickBooks' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  async findAll(@Request() req: any, @Query('page') page = '1', @Query('limit') limit = '20') {
-    return this.qbCustomerService.findAllByBusiness(req.businessId, Math.max(1, parseInt(page)), Math.min(100, Math.max(1, parseInt(limit))));
+  @ApiQuery({ name: 'page',   required: false, type: Number })
+  @ApiQuery({ name: 'limit',  required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  async findAll(
+    @Request() req: any,
+    @Query('page')   page   = '1',
+    @Query('limit')  limit  = '20',
+    @Query('search') search?: string,
+  ) {
+    return this.qbCustomerService.findAllByBusiness(
+      req.businessId,
+      Math.max(1, parseInt(page)),
+      Math.min(100, Math.max(1, parseInt(limit))),
+      search,
+    );
   }
 
   @Get(':id')

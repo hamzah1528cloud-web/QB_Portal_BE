@@ -94,8 +94,8 @@ export class PortalAuthService {
     return { plainPassword };
   }
 
-  async listByBusiness(businessId: string, page: number, limit: number) {
-    const result = await this.portalUserDAO.findPaginatedByBusiness(businessId, page, limit);
+  async listByBusiness(businessId: string, page: number, limit: number, filters?: { search?: string; isActive?: boolean }) {
+    const result = await this.portalUserDAO.findPaginatedByBusiness(businessId, page, limit, filters);
     return { ...result, data: result.data.map((u: any) => safeUser(u)) };
   }
 }

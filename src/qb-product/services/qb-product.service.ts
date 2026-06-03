@@ -9,8 +9,8 @@ import { QbProductDAO } from '../daos/qb-product.dao';
 export class QbProductService {
   constructor(private readonly qbProductDAO: QbProductDAO) {}
 
-  async findAllByBusiness(businessId: string, page: number, limit: number) {
-    return this.qbProductDAO.findAllByBusiness(businessId, page, limit);
+  async findAllByBusiness(businessId: string, page: number, limit: number, filters?: { search?: string; includeInactive?: boolean }) {
+    return this.qbProductDAO.findAllByBusiness(businessId, page, limit, filters);
   }
 
   async findByIdAndBusiness(id: string, businessId: string) {
