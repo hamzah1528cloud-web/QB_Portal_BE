@@ -3,6 +3,7 @@ export class QbCustomerDTO {
   businessId: string;
   qbId: string;
   name: string;
+  companyName?: string;
   email?: string;
   phone?: string;
   billingAddress?: {
@@ -12,8 +13,17 @@ export class QbCustomerDTO {
     postalCode?: string;
     country?: string;
   };
+  shippingAddress?: {
+    line1?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  };
   paymentTerms?: string;
   creditLimit?: number;
+  balance?: number;
+  notes?: string;
   lastSyncedAt?: Date;
   isActive: boolean;
   createdAt: Date;

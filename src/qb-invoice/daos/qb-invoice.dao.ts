@@ -15,6 +15,11 @@ export class QbInvoiceDAO extends BaseDAO<QbInvoiceDocument, QbInvoiceDTO> {
     return this.upsert({ businessId, qbId }, { ...data, businessId, qbId, lastSyncedAt: new Date() } as any);
   }
 
+  async findByIdAndBusiness(id: string, businessId: string): Promise<QbInvoiceDocument | null> {
+    const doc = await this.model.findOne({ _id: id, businessId }).lean({ virtuals: true }).exec();
+    return doc as unknown as QbInvoiceDocument | null;
+  }
+
   async findAllByBusiness(businessId: string, page: number, limit: number) {
     const skip = (page - 1) * limit;
     const filter = { businessId };

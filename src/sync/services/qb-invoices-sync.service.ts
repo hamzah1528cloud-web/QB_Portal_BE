@@ -3,15 +3,28 @@ import { QuickBooksClient } from 'src/external/quickbooks/quickbooks.client';
 import { QbInvoiceDAO } from 'src/qb-invoice/daos/qb-invoice.dao';
 import { InvoiceStatus } from 'src/qb-invoice/enums/qb-invoice.enum';
 
+interface QBInvoiceLine {
+  DetailType?: string;
+  Description?: string;
+  Amount?: number;
+  SalesItemLineDetail?: {
+    ItemRef?: { value?: string };
+    Qty?: number;
+    UnitPrice?: number;
+  };
+}
+
 interface QBInvoice {
   Id: string;
   DocNumber?: string;
-  CustomerRef?: { value?: string };
-  Line?: { Description?: string; Amount?: number; SalesItemLineDetail?: { ItemRef?: { value?: string }; Qty?: number; UnitPrice?: number } }[];
-  TotalAmt?: number;
+  TxnDate?: string;
   DueDate?: string;
+  CustomerRef?: { value?: string; name?: string };
+  Line?: QBInvoiceLine[];
+  TotalAmt?: number;
   Balance?: number;
-  EmailStatus?: string;
+  TxnTaxDetail?: { TotalTax?: number };
+  CustomerMemo?: { value?: string };
 }
 
 @Injectable()
@@ -40,24 +53,44 @@ export class QbInvoicesSyncService {
       if (invoices.length === 0) break;
 
       await Promise.all(
-        invoices.map((inv) =>
-          this.qbInvoiceDAO.upsertByQbId(businessId, inv.Id, {
+        invoices.map((inv) => {
+          const salesLines = (inv.Line || []).filter(
+            (l) => l.DetailType === 'SalesItemLineDetail' && l.SalesItemLineDetail,
+          );
+          const subtotal = salesLines.reduce((sum, l) => sum + (l.Amount || 0), 0);
+          const taxAmount = inv.TxnTaxDetail?.TotalTax ?? 0;
+          const balance = inv.Balance ?? 0;
+
+          let status: InvoiceStatus;
+          if (balance === 0) {
+            status = InvoiceStatus.PAID;
+          } else if (inv.DueDate && new Date(inv.DueDate) < new Date()) {
+            status = InvoiceStatus.OVERDUE;
+          } else {
+            status = InvoiceStatus.OPEN;
+          }
+
+          return this.qbInvoiceDAO.upsertByQbId(businessId, inv.Id, {
             invoiceNumber: inv.DocNumber,
-            qbCustomerId: inv.CustomerRef?.value,
-            lineItems: (inv.Line || [])
-              .filter((l) => l.SalesItemLineDetail)
-              .map((l) => ({
-                qbItemId: l.SalesItemLineDetail?.ItemRef?.value,
-                description: l.Description,
-                quantity: l.SalesItemLineDetail?.Qty,
-                unitPrice: l.SalesItemLineDetail?.UnitPrice,
-                amount: l.Amount,
-              })),
-            totalAmount: inv.TotalAmt || 0,
+            txnDate: inv.TxnDate ? new Date(inv.TxnDate) : undefined,
             dueDate: inv.DueDate ? new Date(inv.DueDate) : undefined,
-            status: inv.Balance === 0 ? InvoiceStatus.PAID : InvoiceStatus.OPEN,
-          }),
-        ),
+            qbCustomerId: inv.CustomerRef?.value,
+            customerName: inv.CustomerRef?.name,
+            lineItems: salesLines.map((l) => ({
+              qbItemId: l.SalesItemLineDetail?.ItemRef?.value,
+              description: l.Description,
+              quantity: l.SalesItemLineDetail?.Qty,
+              unitPrice: l.SalesItemLineDetail?.UnitPrice,
+              amount: l.Amount,
+            })),
+            subtotal,
+            taxAmount,
+            totalAmount: inv.TotalAmt || 0,
+            balance,
+            status,
+            customerMemo: inv.CustomerMemo?.value,
+          });
+        }),
       );
 
       totalSynced += invoices.length;

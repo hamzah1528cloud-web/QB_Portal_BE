@@ -18,6 +18,8 @@ import { QbInvoiceModule } from './qb-invoice/qb-invoice.module';
 import { QbPaymentModule } from './qb-payment/qb-payment.module';
 import { QbCreditMemoModule } from './qb-credit-memo/qb-credit-memo.module';
 import { QbTaxCodeModule } from './qb-tax-code/qb-tax-code.module';
+import { OrderModule } from './order/order.module';
+import { PortalAuthModule } from './portal-auth/portal-auth.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -38,6 +40,8 @@ import { AppService } from './app.service';
     QbPaymentModule,
     QbCreditMemoModule,
     QbTaxCodeModule,
+    OrderModule,
+    PortalAuthModule,
   ],
   controllers: [AppController],
   providers: [

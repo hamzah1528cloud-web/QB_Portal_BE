@@ -22,6 +22,9 @@ export class QbInvoice extends BaseSchema {
   @Prop({ required: false })
   qbCustomerId: string;
 
+  @Prop({ required: false })
+  customerName: string;
+
   @Prop({ required: false, type: Array, default: [] })
   lineItems: {
     qbItemId?: string;
@@ -32,7 +35,19 @@ export class QbInvoice extends BaseSchema {
   }[];
 
   @Prop({ required: false, default: 0 })
+  subtotal: number;
+
+  @Prop({ required: false, default: 0 })
+  taxAmount: number;
+
+  @Prop({ required: false, default: 0 })
   totalAmount: number;
+
+  @Prop({ required: false, default: 0 })
+  balance: number;
+
+  @Prop({ required: false })
+  txnDate: Date;
 
   @Prop({ required: false })
   dueDate: Date;
@@ -41,8 +56,13 @@ export class QbInvoice extends BaseSchema {
   status: InvoiceStatus;
 
   @Prop({ required: false })
+  customerMemo: string;
+
+  @Prop({ required: false })
   lastSyncedAt: Date;
 }
 
 export const QbInvoiceSchema = SchemaFactory.createForClass(QbInvoice);
 QbInvoiceSchema.index({ businessId: 1, qbId: 1 }, { unique: true });
+QbInvoiceSchema.index({ businessId: 1, status: 1 });
+QbInvoiceSchema.index({ businessId: 1, qbCustomerId: 1 });

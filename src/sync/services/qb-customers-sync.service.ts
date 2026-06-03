@@ -2,15 +2,38 @@ import { Injectable, Logger } from '@nestjs/common';
 import { QuickBooksClient } from 'src/external/quickbooks/quickbooks.client';
 import { QbCustomerDAO } from 'src/qb-customer/daos/qb-customer.dao';
 
+interface QBAddress {
+  Line1?: string;
+  City?: string;
+  CountrySubDivisionCode?: string;
+  PostalCode?: string;
+  Country?: string;
+}
+
 interface QBCustomer {
   Id: string;
   DisplayName: string;
+  CompanyName?: string;
   PrimaryEmailAddr?: { Address: string };
   PrimaryPhone?: { FreeFormNumber: string };
-  BillAddr?: { Line1?: string; City?: string; CountrySubDivisionCode?: string; PostalCode?: string; Country?: string };
+  BillAddr?: QBAddress;
+  ShipAddr?: QBAddress;
   SalesTermRef?: { name?: string };
   CreditLimit?: number;
+  Balance?: number;
+  Notes?: string;
   Active?: boolean;
+}
+
+function mapAddress(addr?: QBAddress) {
+  if (!addr) return undefined;
+  return {
+    line1: addr.Line1,
+    city: addr.City,
+    state: addr.CountrySubDivisionCode,
+    postalCode: addr.PostalCode,
+    country: addr.Country,
+  };
 }
 
 @Injectable()
@@ -42,19 +65,15 @@ export class QbCustomersSyncService {
         customers.map((c) =>
           this.qbCustomerDAO.upsertByQbId(businessId, c.Id, {
             name: c.DisplayName,
+            companyName: c.CompanyName,
             email: c.PrimaryEmailAddr?.Address,
             phone: c.PrimaryPhone?.FreeFormNumber,
-            billingAddress: c.BillAddr
-              ? {
-                  line1: c.BillAddr.Line1,
-                  city: c.BillAddr.City,
-                  state: c.BillAddr.CountrySubDivisionCode,
-                  postalCode: c.BillAddr.PostalCode,
-                  country: c.BillAddr.Country,
-                }
-              : undefined,
+            billingAddress: mapAddress(c.BillAddr),
+            shippingAddress: mapAddress(c.ShipAddr),
             paymentTerms: c.SalesTermRef?.name,
-            creditLimit: c.CreditLimit,
+            creditLimit: c.CreditLimit ?? 0,
+            balance: c.Balance ?? 0,
+            notes: c.Notes,
             isActive: c.Active !== false,
           }),
         ),

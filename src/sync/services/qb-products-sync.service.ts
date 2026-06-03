@@ -5,13 +5,17 @@ import { QbProductDAO } from 'src/qb-product/daos/qb-product.dao';
 interface QBItem {
   Id: string;
   Name: string;
+  Type?: string;
   Description?: string;
   Sku?: string;
   UnitPrice?: number;
   QtyOnHand?: number;
   SalesTaxCodeRef?: { value?: string };
+  PurchaseCost?: number;
+  PurchaseDesc?: string;
+  IncomeAccountRef?: { value?: string; name?: string };
+  ExpenseAccountRef?: { value?: string; name?: string };
   Active?: boolean;
-  Type?: string;
 }
 
 @Injectable()
@@ -43,11 +47,17 @@ export class QbProductsSyncService {
         items.map((item) =>
           this.qbProductDAO.upsertByQbId(businessId, item.Id, {
             name: item.Name,
+            itemType: item.Type,
             description: item.Description,
             sku: item.Sku,
             price: item.UnitPrice || 0,
-            stockQuantity: item.QtyOnHand || 0,
+            // QtyOnHand is only populated for Inventory items; Service/NonInventory return null
+            stockQuantity: item.Type === 'Inventory' ? (item.QtyOnHand || 0) : 0,
             taxCode: item.SalesTaxCodeRef?.value,
+            purchaseCost: item.PurchaseCost ?? 0,
+            purchaseDescription: item.PurchaseDesc,
+            incomeAccountName: item.IncomeAccountRef?.name,
+            expenseAccountName: item.ExpenseAccountRef?.name,
             isActive: item.Active !== false,
           }),
         ),

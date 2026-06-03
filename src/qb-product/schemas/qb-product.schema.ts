@@ -33,6 +33,21 @@ export class QbProduct extends BaseSchema {
   @Prop({ required: false })
   taxCode: string;
 
+  @Prop({ required: false })
+  itemType: string;
+
+  @Prop({ required: false, default: 0 })
+  purchaseCost: number;
+
+  @Prop({ required: false })
+  purchaseDescription: string;
+
+  @Prop({ required: false })
+  incomeAccountName: string;
+
+  @Prop({ required: false })
+  expenseAccountName: string;
+
   @Prop({ default: true })
   isActive: boolean;
 
@@ -42,3 +57,4 @@ export class QbProduct extends BaseSchema {
 
 export const QbProductSchema = SchemaFactory.createForClass(QbProduct);
 QbProductSchema.index({ businessId: 1, qbId: 1 }, { unique: true });
+QbProductSchema.index({ businessId: 1, isActive: 1, name: 1 });

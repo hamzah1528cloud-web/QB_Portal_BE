@@ -7,6 +7,7 @@ export class QbInvoiceDTO {
   invoiceNumber?: string;
   customerId?: string;
   qbCustomerId?: string;
+  customerName?: string;
   lineItems: {
     qbItemId?: string;
     description?: string;
@@ -14,9 +15,14 @@ export class QbInvoiceDTO {
     unitPrice?: number;
     amount?: number;
   }[];
+  subtotal: number;
+  taxAmount: number;
   totalAmount: number;
+  balance: number;
+  txnDate?: Date;
   dueDate?: Date;
   status: InvoiceStatus;
+  customerMemo?: string;
   lastSyncedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
