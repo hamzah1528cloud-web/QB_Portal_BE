@@ -7,6 +7,7 @@ import { QbInvoiceModule } from 'src/qb-invoice/qb-invoice.module';
 import { QbPaymentModule } from 'src/qb-payment/qb-payment.module';
 import { QbCreditMemoModule } from 'src/qb-credit-memo/qb-credit-memo.module';
 import { QbTaxCodeModule } from 'src/qb-tax-code/qb-tax-code.module';
+import { OrderModule } from 'src/order/order.module';
 import { QB_SYNC_QUEUE, getRedisConfig } from './constants/queue.constants';
 import { SyncController } from './controllers/sync.controller';
 import { WebhookController } from './controllers/webhook.controller';
@@ -24,6 +25,7 @@ import { QbTaxCodesSyncService } from './services/qb-tax-codes-sync.service';
   imports: [
     BullModule.registerQueue({ name: QB_SYNC_QUEUE, redis: getRedisConfig() }),
     forwardRef(() => BusinessModule),
+    forwardRef(() => OrderModule),
     QbCustomerModule,
     QbProductModule,
     QbInvoiceModule,
@@ -43,6 +45,6 @@ import { QbTaxCodesSyncService } from './services/qb-tax-codes-sync.service';
     QbCreditMemosSyncService,
     QbTaxCodesSyncService,
   ],
-  exports: [SyncService],
+  exports: [SyncService, QbProductsSyncService],
 })
 export class SyncModule {}

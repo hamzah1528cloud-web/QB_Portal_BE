@@ -1,13 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { QuickBooksClient } from 'src/external/quickbooks/quickbooks.client';
 import { QbProductDAO } from 'src/qb-product/daos/qb-product.dao';
+import { detectOrderingUnits, QBItemForUnitDetection } from 'src/qb-product/utils/unit-detection';
 
-interface QBItem {
-  Id: string;
-  Name: string;
-  Type?: string;
+interface QBItem extends QBItemForUnitDetection {
   Description?: string;
-  Sku?: string;
   UnitPrice?: number;
   QtyOnHand?: number;
   SalesTaxCodeRef?: { value?: string };
@@ -16,6 +13,13 @@ interface QBItem {
   IncomeAccountRef?: { value?: string; name?: string };
   ExpenseAccountRef?: { value?: string; name?: string };
   Active?: boolean;
+}
+
+interface QBUOMSet {
+  Id: string;
+  Name: string;
+  BaseUnit: { Name: string };
+  UOMConvUnit?: { Name: string; ConvUnit: number }[];
 }
 
 @Injectable()
@@ -32,7 +36,9 @@ export class QbProductsSyncService {
     let startPosition = 1;
     const pageSize = 100;
     let totalSynced = 0;
+    const allItems: QBItem[] = [];
 
+    // Collect all items first so we can batch-fetch UOM sets
     while (true) {
       const response = await this.qbClient.query<{ Item?: QBItem[] }>(
         accessToken,
@@ -42,33 +48,79 @@ export class QbProductsSyncService {
 
       const items = response.Item || [];
       if (items.length === 0) break;
-
-      await Promise.all(
-        items.map((item) =>
-          this.qbProductDAO.upsertByQbId(businessId, item.Id, {
-            name: item.Name,
-            itemType: item.Type,
-            description: item.Description,
-            sku: item.Sku,
-            price: item.UnitPrice || 0,
-            // QtyOnHand is only populated for Inventory items; Service/NonInventory return null
-            stockQuantity: item.Type === 'Inventory' ? (item.QtyOnHand || 0) : 0,
-            taxCode: item.SalesTaxCodeRef?.value,
-            purchaseCost: item.PurchaseCost ?? 0,
-            purchaseDescription: item.PurchaseDesc,
-            incomeAccountName: item.IncomeAccountRef?.name,
-            expenseAccountName: item.ExpenseAccountRef?.name,
-            isActive: item.Active !== false,
-          }),
-        ),
-      );
-
-      totalSynced += items.length;
+      allItems.push(...items);
       if (items.length < pageSize) break;
       startPosition += pageSize;
     }
 
+    // Batch-fetch unique UOM sets (only one API call per unique set ID)
+    const uomSetCache = await this.fetchUomSets(accessToken, realmId, allItems);
+
+    await Promise.all(
+      allItems.map((item) => this.upsertItem(businessId, item, uomSetCache)),
+    );
+
+    totalSynced = allItems.length;
     this.logger.log(`[Sync] Synced ${totalSynced} products for business ${businessId}`);
     return totalSynced;
+  }
+
+  private async fetchUomSets(accessToken: string, realmId: string, items: QBItem[]): Promise<Map<string, string[]>> {
+    const cache = new Map<string, string[]>();
+    const uniqueSetIds = [...new Set(
+      items
+        .map((i) => i.UnitOfMeasureSetRef?.value)
+        .filter((id): id is string => !!id),
+    )];
+
+    if (uniqueSetIds.length === 0) return cache;
+
+    await Promise.all(
+      uniqueSetIds.map(async (setId) => {
+        try {
+          const response = await this.qbClient.query<{ UOMSet?: QBUOMSet[] }>(
+            accessToken,
+            realmId,
+            `SELECT * FROM UOMSet WHERE Id = '${setId}'`,
+          );
+          const set = response.UOMSet?.[0];
+          if (!set) return;
+
+          const units: string[] = [];
+          if (set.BaseUnit?.Name) units.push(set.BaseUnit.Name.trim().toLowerCase());
+          set.UOMConvUnit?.forEach((u) => {
+            const n = u.Name.trim().toLowerCase();
+            if (!units.includes(n)) units.push(n);
+          });
+          if (units.length > 0) cache.set(setId, units);
+        } catch {
+          // UOM set unavailable (tier restriction or deleted) — silently skip
+          this.logger.warn(`[Sync] Could not fetch UOM set ${setId} — skipping`);
+        }
+      }),
+    );
+
+    return cache;
+  }
+
+  private async upsertItem(businessId: string, item: QBItem, uomSetCache: Map<string, string[]>): Promise<void> {
+    const detectedUnits = detectOrderingUnits(item, uomSetCache);
+
+    const baseData: Record<string, any> = {
+      name: item.Name,
+      itemType: item.Type,
+      description: item.Description,
+      sku: item.Sku,
+      price: item.UnitPrice || 0,
+      stockQuantity: item.Type === 'Inventory' ? (item.QtyOnHand || 0) : 0,
+      taxCode: item.SalesTaxCodeRef?.value,
+      purchaseCost: item.PurchaseCost ?? 0,
+      purchaseDescription: item.PurchaseDesc,
+      incomeAccountName: item.IncomeAccountRef?.name,
+      expenseAccountName: item.ExpenseAccountRef?.name,
+      isActive: item.Active !== false,
+    };
+
+    await this.qbProductDAO.upsertByQbIdConditionalUnits(businessId, item.Id, baseData, detectedUnits);
   }
 }

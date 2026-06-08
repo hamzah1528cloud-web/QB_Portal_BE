@@ -124,6 +124,125 @@ export class QuickBooksClient {
     }
   }
 
+  private buildEstimateDescription(productDescription: string | undefined, quantity: number, unit: string | undefined): string {
+    const lines: string[] = [];
+    if (productDescription?.trim()) lines.push(productDescription.trim());
+    if (unit) lines.push(`**${quantity} ${unit}**`);
+    return lines.join('\n').slice(0, 4000); // QB 4000-char description limit
+  }
+
+  async createEstimate(
+    accessToken: string,
+    realmId: string,
+    payload: {
+      qbCustomerId: string;
+      lineItems: {
+        qbItemId: string;
+        productName: string;
+        productDescription?: string;
+        quantity: number;
+        unitPrice: number;
+        amount: number;
+        unit?: string;
+      }[];
+      notes?: string;
+    },
+  ): Promise<{ Id: string; DocNumber?: string; TotalAmt?: number; TxnStatus?: string }> {
+    const client = this.buildApiClient(accessToken, realmId);
+    try {
+      const body = {
+        CustomerRef: { value: payload.qbCustomerId },
+        TxnStatus: 'Pending',
+        ...(payload.notes ? { CustomerMemo: { value: payload.notes } } : {}),
+        Line: payload.lineItems.map((l) => ({
+          DetailType: 'SalesItemLineDetail',
+          Amount: l.amount,
+          Description: this.buildEstimateDescription(l.productDescription, l.quantity, l.unit),
+          SalesItemLineDetail: {
+            ItemRef: { value: l.qbItemId },
+            Qty: l.quantity,
+            UnitPrice: l.unitPrice,
+          },
+        })),
+      };
+      const response = await client.post('/estimate?minorversion=70', body);
+      return response.data.Estimate;
+    } catch (err) {
+      const status = err.response?.status;
+      if (status === 401) {
+        throw new CustomError('QB access token expired', HttpStatusCode.UNAUTHORIZED, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_TOKEN_EXPIRED);
+      }
+      this.logger.error(`QB createEstimate failed: ${err.response?.data?.Fault?.Error?.[0]?.Message || err.message}`);
+      throw new CustomError('Failed to create QuickBooks estimate', HttpStatusCode.INTERNAL_SERVER_ERROR, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_API_ERROR);
+    }
+  }
+
+  async getEstimate(
+    accessToken: string,
+    realmId: string,
+    estimateId: string,
+  ): Promise<{ Id: string; TxnStatus?: string; DocNumber?: string; LinkedTxn?: { TxnId: string; TxnType: string }[] } | null> {
+    const client = this.buildApiClient(accessToken, realmId);
+    try {
+      const response = await client.get(`/estimate/${estimateId}?minorversion=70`);
+      return response.data.Estimate ?? null;
+    } catch (err) {
+      if (err.response?.status === 404) return null;
+      if (err.response?.status === 401) {
+        throw new CustomError('QB access token expired', HttpStatusCode.UNAUTHORIZED, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_TOKEN_EXPIRED);
+      }
+      this.logger.error(`QB getEstimate failed: ${err.message}`);
+      throw new CustomError('Failed to fetch QuickBooks estimate', HttpStatusCode.INTERNAL_SERVER_ERROR, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_API_ERROR);
+    }
+  }
+
+  async updateEstimateStatus(
+    accessToken: string,
+    realmId: string,
+    estimateId: string,
+    status: 'Pending' | 'Accepted' | 'Closed' | 'Rejected',
+  ): Promise<void> {
+    const client = this.buildApiClient(accessToken, realmId);
+    try {
+      // QB requires a sparse update with SyncToken — fetch current state first
+      const current = await this.getEstimate(accessToken, realmId, estimateId);
+      if (!current) return;
+
+      const currentFull = await client.get(`/estimate/${estimateId}?minorversion=70`);
+      const syncToken = currentFull.data.Estimate?.SyncToken;
+      if (syncToken === undefined) return;
+
+      await client.post('/estimate?operation=update&minorversion=70', {
+        Id: estimateId,
+        SyncToken: syncToken,
+        TxnStatus: status,
+        sparse: true,
+      });
+    } catch (err) {
+      // Best-effort — log but do not throw; caller handles gracefully
+      this.logger.warn(`QB updateEstimateStatus failed for ${estimateId}: ${err.message}`);
+    }
+  }
+
+  async getInvoice(
+    accessToken: string,
+    realmId: string,
+    invoiceId: string,
+  ): Promise<{ Id: string; DocNumber?: string; LinkedTxn?: { TxnId: string; TxnType: string }[] } | null> {
+    const client = this.buildApiClient(accessToken, realmId);
+    try {
+      const response = await client.get(`/invoice/${invoiceId}?minorversion=70`);
+      return response.data.Invoice ?? null;
+    } catch (err) {
+      if (err.response?.status === 404) return null;
+      if (err.response?.status === 401) {
+        throw new CustomError('QB access token expired', HttpStatusCode.UNAUTHORIZED, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_TOKEN_EXPIRED);
+      }
+      this.logger.error(`QB getInvoice failed: ${err.message}`);
+      return null;
+    }
+  }
+
   async query<T>(accessToken: string, realmId: string, query: string): Promise<T> {
     const client = this.buildApiClient(accessToken, realmId);
     try {

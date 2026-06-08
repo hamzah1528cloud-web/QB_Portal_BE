@@ -48,4 +48,26 @@ export class OrderDAO extends BaseDAO<OrderDocument, CreateOrderDTO> {
     const doc = await this.model.findOne({ _id: id, businessId, portalUserId }).lean().exec();
     return mapDoc<OrderDocument>(doc);
   }
+
+  async findByQbEstimateId(businessId: string, qbEstimateId: string): Promise<OrderDocument | null> {
+    const doc = await this.model.findOne({ businessId, qbEstimateId }).lean().exec();
+    return mapDoc<OrderDocument>(doc);
+  }
+
+  async findPaginatedByQbCustomer(businessId: string, qbCustomerId: string, page: number, limit: number, filters?: { status?: string }) {
+    const skip = (page - 1) * limit;
+    const filter: any = { businessId, qbCustomerId };
+    if (filters?.status) filter.status = filters.status;
+
+    const [data, total] = await Promise.all([
+      this.model.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
+      this.model.countDocuments(filter).exec(),
+    ]);
+    return { data: mapDocs<OrderDocument>(data), total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async findByIdAndQbCustomer(id: string, businessId: string, qbCustomerId: string): Promise<OrderDocument | null> {
+    const doc = await this.model.findOne({ _id: id, businessId, qbCustomerId }).lean().exec();
+    return mapDoc<OrderDocument>(doc);
+  }
 }

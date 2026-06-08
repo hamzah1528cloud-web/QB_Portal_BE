@@ -94,6 +94,23 @@ export class SyncService {
     return count;
   }
 
+  // Exposed for use by the processor — returns null instead of throwing when not connected
+  async getTokensForProcessor(businessId: string): Promise<{ accessToken: string; realmId: string } | null> {
+    try {
+      return await this.getTokens(businessId);
+    } catch {
+      return null;
+    }
+  }
+
+  async fetchEstimate(accessToken: string, realmId: string, estimateId: string) {
+    return this.qbClient.getEstimate(accessToken, realmId, estimateId);
+  }
+
+  async fetchInvoice(accessToken: string, realmId: string, invoiceId: string) {
+    return this.qbClient.getInvoice(accessToken, realmId, invoiceId);
+  }
+
   async runFullSync(businessId: string): Promise<{ customers: number; products: number; invoices: number; payments: number; creditMemos: number; taxCodes: number }> {
     const { accessToken, realmId } = await this.getTokens(businessId);
 

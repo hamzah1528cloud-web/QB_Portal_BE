@@ -51,6 +51,12 @@ export class QbProduct extends BaseSchema {
   @Prop({ default: true })
   isActive: boolean;
 
+  @Prop({ required: false, type: [String], default: ['each'] })
+  orderingUnits: string[];
+
+  @Prop({ required: false, default: false })
+  unitsCustomized: boolean;
+
   @Prop({ required: false })
   lastSyncedAt: Date;
 }
