@@ -16,6 +16,49 @@ export class QbProductDAO extends BaseDAO<QbProductDocument, QbProductDTO> {
     return this.upsert({ businessId, qbId }, { ...data, businessId, qbId, lastSyncedAt: new Date() } as any);
   }
 
+  // Updates base fields always, but only writes orderingUnits when unitsCustomized is false/unset
+  async upsertByQbIdConditionalUnits(
+    businessId: string,
+    qbId: string,
+    baseData: Record<string, any>,
+    detectedUnits: string[],
+  ): Promise<void> {
+    const filter = { businessId, qbId };
+    const now = new Date();
+
+    // Always upsert the base product fields
+    await this.model.findOneAndUpdate(
+      filter,
+      { $set: { ...baseData, businessId, qbId, lastSyncedAt: now } },
+      { upsert: true, new: true },
+    ).lean().exec();
+
+    // Only write detected units when the business owner has NOT customized them
+    await this.model.updateOne(
+      { businessId, qbId, unitsCustomized: { $ne: true } },
+      { $set: { orderingUnits: detectedUnits } },
+    ).exec();
+  }
+
+  async setOrderingUnits(id: string, businessId: string, units: string[]): Promise<void> {
+    await this.model.updateOne(
+      { _id: id, businessId },
+      { $set: { orderingUnits: units, unitsCustomized: true } },
+    ).exec();
+  }
+
+  async resetOrderingUnits(id: string, businessId: string, detectedUnits: string[]): Promise<void> {
+    await this.model.updateOne(
+      { _id: id, businessId },
+      { $set: { orderingUnits: detectedUnits, unitsCustomized: false } },
+    ).exec();
+  }
+
+  async findByQbIdAndBusiness(qbId: string, businessId: string): Promise<QbProductDocument | null> {
+    const doc = await this.model.findOne({ qbId, businessId }).lean().exec();
+    return mapDoc<QbProductDocument>(doc);
+  }
+
   async findByIdAndBusiness(id: string, businessId: string): Promise<QbProductDocument | null> {
     const doc = await this.model.findOne({ _id: id, businessId }).lean().exec();
     return mapDoc<QbProductDocument>(doc);

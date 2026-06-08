@@ -26,6 +26,7 @@ export class Order extends BaseSchema {
     quantity: number;
     unitPrice: number;
     amount: number;
+    unit?: string;
   }[];
 
   @Prop({ required: false, default: 0 })
@@ -36,6 +37,24 @@ export class Order extends BaseSchema {
 
   @Prop({ required: false })
   qbInvoiceId: string;
+
+  // Estimate fields (new flow — replaces invoice creation on order placement)
+  @Prop({ required: false })
+  qbEstimateId: string;
+
+  @Prop({ required: false })
+  qbEstimateNumber: string;
+
+  @Prop({ required: false, default: false })
+  qbEstimateFailed: boolean;
+
+  // True when QB was not connected at the time the order was placed
+  @Prop({ required: false, default: false })
+  qbSkipped: boolean;
+
+  // True when the order was cancelled but the estimate had already been converted to a QB invoice
+  @Prop({ required: false, default: false })
+  estimateConvertedBeforeCancel: boolean;
 
   @Prop({ required: false })
   notes: string;

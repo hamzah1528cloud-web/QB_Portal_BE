@@ -1,20 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import * as crypto from 'crypto';
 import { QB_WEBHOOK_VERIFIER_TOKEN } from 'src/common/config/secrets';
 import { BusinessDAO } from 'src/business/daos/business.dao';
+import { QB_SYNC_QUEUE, QbSyncJob } from '../constants/queue.constants';
 import { SyncService } from './sync.service';
 
 interface CloudEvent {
   specversion: string;
   id: string;
-  type: string;           // e.g. "qbo.invoice.updated.v1"
+  type: string;           // e.g. "qbo.estimate.updated.v1"
   time: string;
-  intuitentityid: string;
+  intuitentityid: string; // QB entity ID (estimate ID, invoice ID, etc.)
   intuitaccountid: string; // realmId
   data?: Record<string, any>;
 }
 
-// Maps CloudEvents type prefix → QB entity name used in our job map
 const CLOUD_EVENT_TYPE_TO_ENTITY: Record<string, string> = {
   'qbo.invoice':    'Invoice',
   'qbo.customer':   'Customer',
@@ -22,6 +24,7 @@ const CLOUD_EVENT_TYPE_TO_ENTITY: Record<string, string> = {
   'qbo.payment':    'Payment',
   'qbo.creditmemo': 'CreditMemo',
   'qbo.taxcode':    'TaxCode',
+  'qbo.estimate':   'Estimate',
 };
 
 function resolveEntity(type: string): string | null {
@@ -36,6 +39,7 @@ export class WebhookService {
   private readonly logger = new Logger(WebhookService.name);
 
   constructor(
+    @InjectQueue(QB_SYNC_QUEUE) private readonly syncQueue: Queue,
     private readonly businessDAO: BusinessDAO,
     private readonly syncService: SyncService,
   ) {}
@@ -55,8 +59,12 @@ export class WebhookService {
       return;
     }
 
-    // Group by realmId → deduplicated entity set (avoids N sync jobs for N changed entities of same type)
-    const byRealm = new Map<string, Set<string>>();
+    // Group by realmId — separate buckets for estimate/invoice (per-ID) vs others (per-type)
+    const byRealm = new Map<string, {
+      genericEntities: Set<string>;
+      estimateIds: Set<string>;
+      invoiceIds: Set<string>;
+    }>();
 
     for (const event of events) {
       const realmId = event.intuitaccountid;
@@ -67,11 +75,24 @@ export class WebhookService {
         continue;
       }
 
-      if (!byRealm.has(realmId)) byRealm.set(realmId, new Set());
-      byRealm.get(realmId)!.add(entity);
+      if (!byRealm.has(realmId)) {
+        byRealm.set(realmId, { genericEntities: new Set(), estimateIds: new Set(), invoiceIds: new Set() });
+      }
+
+      const bucket = byRealm.get(realmId)!;
+
+      if (entity === 'Estimate' && event.intuitentityid) {
+        bucket.estimateIds.add(event.intuitentityid);
+      } else if (entity === 'Invoice' && event.intuitentityid) {
+        // Enqueue both the regular invoice sync AND the linked-estimate check
+        bucket.invoiceIds.add(event.intuitentityid);
+        bucket.genericEntities.add('Invoice');
+      } else {
+        bucket.genericEntities.add(entity);
+      }
     }
 
-    for (const [realmId, entities] of byRealm) {
+    for (const [realmId, { genericEntities, estimateIds, invoiceIds }] of byRealm) {
       const business = await this.businessDAO.findByRealmId(realmId);
       if (!business) {
         this.logger.warn(`[Webhook] No business found for realmId ${realmId} — skipping`);
@@ -79,10 +100,29 @@ export class WebhookService {
       }
 
       const businessId = (business as any).id;
-      this.logger.log(`[Webhook] Business ${businessId} — changed: ${[...entities].join(', ')}`);
+      this.logger.log(`[Webhook] Business ${businessId} — entities: ${[...genericEntities].join(', ')} | estimates: ${[...estimateIds].join(', ')} | invoices: ${[...invoiceIds].join(', ')}`);
 
-      for (const entity of entities) {
+      // Generic targeted syncs (customers, products, invoices, etc.)
+      for (const entity of genericEntities) {
         await this.syncService.enqueueTargetedSync(businessId, entity);
+      }
+
+      // Per-estimate status jobs — each estimate ID gets its own job
+      for (const estimateId of estimateIds) {
+        await this.syncQueue.add(
+          QbSyncJob.ESTIMATE_STATUS_SYNC,
+          { businessId, estimateId },
+          { attempts: 3, backoff: { type: 'exponential', delay: 3000 }, jobId: `estimate-${businessId}-${estimateId}` },
+        );
+      }
+
+      // Per-invoice linked-estimate jobs
+      for (const invoiceId of invoiceIds) {
+        await this.syncQueue.add(
+          QbSyncJob.INVOICE_LINKED_ESTIMATE,
+          { businessId, invoiceId },
+          { attempts: 3, backoff: { type: 'exponential', delay: 3000 }, jobId: `invoice-link-${businessId}-${invoiceId}` },
+        );
       }
     }
   }

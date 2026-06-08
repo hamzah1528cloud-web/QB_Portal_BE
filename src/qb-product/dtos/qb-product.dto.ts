@@ -15,7 +15,13 @@ export class QbProductDTO {
   incomeAccountName?: string;
   expenseAccountName?: string;
   isActive: boolean;
+  orderingUnits: string[];
+  unitsCustomized: boolean;
   lastSyncedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export class UpdateProductUnitsDTO {
+  units: string[];
 }

@@ -3,13 +3,16 @@ import { REDIS_HOST, REDIS_PORT, REDIS_PASSWORD } from 'src/common/config/secret
 export const QB_SYNC_QUEUE = 'qb-sync';
 
 export const QbSyncJob = {
-  FULL_SYNC:         'full-sync',
-  SYNC_CUSTOMERS:    'sync-customers',
-  SYNC_PRODUCTS:     'sync-products',
-  SYNC_INVOICES:     'sync-invoices',
-  SYNC_PAYMENTS:     'sync-payments',
-  SYNC_CREDIT_MEMOS: 'sync-credit-memos',
-  SYNC_TAX_CODES:    'sync-tax-codes',
+  FULL_SYNC:              'full-sync',
+  SYNC_CUSTOMERS:         'sync-customers',
+  SYNC_PRODUCTS:          'sync-products',
+  SYNC_INVOICES:          'sync-invoices',
+  SYNC_PAYMENTS:          'sync-payments',
+  SYNC_CREDIT_MEMOS:      'sync-credit-memos',
+  SYNC_TAX_CODES:         'sync-tax-codes',
+  // Estimate-specific jobs — fetch QB estimate/invoice and apply status to our order
+  ESTIMATE_STATUS_SYNC:   'estimate-status-sync',
+  INVOICE_LINKED_ESTIMATE: 'invoice-linked-estimate',
 } as const;
 
 export type QbSyncJobType = typeof QbSyncJob[keyof typeof QbSyncJob];

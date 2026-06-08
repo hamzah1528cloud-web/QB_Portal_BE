@@ -1,7 +1,8 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { BusinessModule } from 'src/business/business.module';
-import { QbInvoiceModule } from 'src/qb-invoice/qb-invoice.module';
+import { QbCustomerModule } from 'src/qb-customer/qb-customer.module';
+import { QbProductModule } from 'src/qb-product/qb-product.module';
 import { QuickBooksModule } from 'src/external/quickbooks/quickbooks.module';
 import { Order, OrderSchema } from './schemas/order.schema';
 import { OrderDAO } from './daos/order.dao';
@@ -12,7 +13,8 @@ import { OrderController } from './controllers/order.controller';
   imports: [
     MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
     forwardRef(() => BusinessModule),
-    QbInvoiceModule,
+    QbCustomerModule,
+    QbProductModule,
     QuickBooksModule,
   ],
   controllers: [OrderController],
