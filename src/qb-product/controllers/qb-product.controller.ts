@@ -1,9 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Patch, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { CombinedAuthGuard } from 'src/common/security/guards/combined-auth.guard';
 import { JwtAuthGuard } from 'src/common/security/guards/jwt-auth.guard';
 import { QbProductService } from '../services/qb-product.service';
-import { UpdateProductUnitsDTO } from '../dtos/qb-product.dto';
+import { CreateProductDTO, UpdateProductUnitsDTO } from '../dtos/qb-product.dto';
 
 @ApiTags('QB Products')
 @ApiBearerAuth('access-token')
@@ -31,6 +31,20 @@ export class QbProductController {
       Math.min(100, Math.max(1, parseInt(limit))),
       { search, includeInactive: includeInactive === 'true' },
     );
+  }
+
+  @Get('accounts')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get QB income and expense accounts for product form (business owner only)' })
+  async getAccounts(@Request() req: any) {
+    return this.qbProductService.getQbAccounts(req.businessId);
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Create a new product in QuickBooks and sync it (business owner only)' })
+  async create(@Request() req: any, @Body() dto: CreateProductDTO) {
+    return this.qbProductService.createProduct(req.businessId, dto);
   }
 
   @Get(':id')

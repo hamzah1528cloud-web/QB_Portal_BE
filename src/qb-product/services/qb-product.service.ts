@@ -3,12 +3,20 @@ import { CustomError } from 'src/common/errors/api.error';
 import { ApiErrorCode } from 'src/common/enums/codes/api-error.enum';
 import { ApiErrorSubCode } from 'src/common/enums/codes/api-error-subcode.enum';
 import { HttpStatusCode } from 'src/common/enums/codes/http-error-code.enum';
+import { isTokenExpired } from 'src/common/utils/utils';
+import { BusinessDAO } from 'src/business/daos/business.dao';
+import { QuickBooksClient } from 'src/external/quickbooks/quickbooks.client';
 import { QbProductDAO } from '../daos/qb-product.dao';
+import { CreateProductDTO } from '../dtos/qb-product.dto';
 import { detectOrderingUnits } from '../utils/unit-detection';
 
 @Injectable()
 export class QbProductService {
-  constructor(private readonly qbProductDAO: QbProductDAO) {}
+  constructor(
+    private readonly qbProductDAO: QbProductDAO,
+    private readonly businessDAO: BusinessDAO,
+    private readonly qbClient: QuickBooksClient,
+  ) {}
 
   async findAllByBusiness(businessId: string, page: number, limit: number, filters?: { search?: string; includeInactive?: boolean }) {
     return this.qbProductDAO.findAllByBusiness(businessId, page, limit, filters);
@@ -20,6 +28,82 @@ export class QbProductService {
       throw new CustomError('Product not found', HttpStatusCode.NOT_FOUND, ApiErrorCode.GENERAL, ApiErrorSubCode.NOT_FOUND);
     }
     return product;
+  }
+
+  async getQbAccounts(businessId: string) {
+    const { accessToken, realmId } = await this.getTokens(businessId);
+    const [income, expense] = await Promise.all([
+      this.qbClient.getAccounts(accessToken, realmId, 'Income'),
+      this.qbClient.getAccounts(accessToken, realmId, 'Cost of Goods Sold'),
+    ]);
+    return { income, expense };
+  }
+
+  async createProduct(businessId: string, dto: CreateProductDTO) {
+    const { accessToken, realmId } = await this.getTokens(businessId);
+
+    const qbItem = await this.qbClient.createItem(accessToken, realmId, {
+      name:            dto.name,
+      type:            dto.type,
+      unitPrice:       dto.unitPrice,
+      incomeAccountId: dto.incomeAccountId,
+      description:     dto.description,
+      sku:             dto.sku,
+      purchaseCost:    dto.purchaseCost,
+      expenseAccountId: dto.expenseAccountId,
+      qtyOnHand:       dto.qtyOnHand,
+      parentItemId:    dto.parentItemId,
+    });
+
+    // Fetch parent details if this is a sub-item
+    let parentName: string | undefined;
+    if (dto.parentItemId) {
+      const parent = await this.qbProductDAO.findByQbIdAndBusiness(dto.parentItemId, businessId);
+      parentName = (parent as any)?.name;
+    }
+
+    const detectedUnits = detectOrderingUnits(
+      { Id: qbItem.Id, Name: qbItem.Name, Sku: dto.sku, SubItem: !!dto.parentItemId, ParentRef: parentName ? { name: parentName } : undefined },
+      new Map(),
+    );
+
+    await this.qbProductDAO.upsertByQbIdConditionalUnits(businessId, qbItem.Id, {
+      name:            qbItem.Name,
+      itemType:        dto.type,
+      description:     dto.description,
+      sku:             dto.sku,
+      price:           dto.unitPrice,
+      stockQuantity:   dto.qtyOnHand ?? 0,
+      purchaseCost:    dto.purchaseCost ?? 0,
+      isActive:        true,
+      isSubItem:       !!dto.parentItemId,
+      parentQbId:      dto.parentItemId ?? null,
+      parentName:      parentName ?? null,
+    }, detectedUnits);
+
+    return this.qbProductDAO.findByQbIdAndBusiness(qbItem.Id, businessId);
+  }
+
+  private async getTokens(businessId: string): Promise<{ accessToken: string; realmId: string }> {
+    const business = await this.businessDAO.findById(businessId);
+    if (!(business as any).isQbConnected) {
+      throw new CustomError('QuickBooks is not connected', HttpStatusCode.BAD_REQUEST, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_NOT_CONNECTED);
+    }
+    let { qbAccessToken, qbRefreshToken, qbTokenExpiresAt, qbRealmId } = business as any;
+    if (isTokenExpired(qbTokenExpiresAt)) {
+      const tokens = await this.qbClient.refreshTokens(qbRefreshToken);
+      const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+      const refreshExpiresAt = new Date(Date.now() + tokens.x_refresh_token_expires_in * 1000);
+      await this.businessDAO.updateQbTokens(businessId, {
+        qbAccessToken: tokens.access_token,
+        qbRefreshToken: tokens.refresh_token,
+        qbTokenExpiresAt: expiresAt,
+        qbRefreshTokenExpiresAt: refreshExpiresAt,
+        isQbConnected: true,
+      });
+      qbAccessToken = tokens.access_token;
+    }
+    return { accessToken: qbAccessToken, realmId: qbRealmId };
   }
 
   async setOrderingUnits(id: string, businessId: string, units: string[]): Promise<void> {

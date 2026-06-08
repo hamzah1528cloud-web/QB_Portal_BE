@@ -30,6 +30,15 @@ export class QbProduct extends BaseSchema {
   @Prop({ required: false })
   unitOfMeasure: string;
 
+  @Prop({ required: false, default: false })
+  isSubItem: boolean;
+
+  @Prop({ required: false })
+  parentQbId: string;
+
+  @Prop({ required: false })
+  parentName: string;
+
   @Prop({ required: false })
   taxCode: string;
 

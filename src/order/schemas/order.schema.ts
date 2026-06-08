@@ -64,3 +64,4 @@ export const OrderSchema = SchemaFactory.createForClass(Order);
 OrderSchema.index({ businessId: 1, status: 1 });
 OrderSchema.index({ businessId: 1, portalUserId: 1 });
 OrderSchema.index({ businessId: 1, qbCustomerId: 1 });
+OrderSchema.index({ businessId: 1, qbEstimateId: 1 });

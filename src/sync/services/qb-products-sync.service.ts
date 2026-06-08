@@ -119,6 +119,9 @@ export class QbProductsSyncService {
       incomeAccountName: item.IncomeAccountRef?.name,
       expenseAccountName: item.ExpenseAccountRef?.name,
       isActive: item.Active !== false,
+      isSubItem: !!item.SubItem,
+      parentQbId: item.ParentRef?.value ?? null,
+      parentName: item.ParentRef?.name ?? null,
     };
 
     await this.qbProductDAO.upsertByQbIdConditionalUnits(businessId, item.Id, baseData, detectedUnits);
