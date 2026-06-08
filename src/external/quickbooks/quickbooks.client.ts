@@ -243,6 +243,79 @@ export class QuickBooksClient {
     }
   }
 
+  async getAccounts(
+    accessToken: string,
+    realmId: string,
+    accountType?: 'Income' | 'Cost of Goods Sold' | 'Expense',
+  ): Promise<{ Id: string; Name: string; AccountType: string; AccountSubType: string; Active: boolean }[]> {
+    const client = this.buildApiClient(accessToken, realmId);
+    try {
+      const where = accountType ? ` WHERE AccountType = '${accountType}' AND Active = true` : ' WHERE Active = true';
+      const response = await client.get('/query', {
+        params: { query: `SELECT * FROM Account${where} MAXRESULTS 200`, minorversion: 70 },
+      });
+      return response.data.QueryResponse?.Account ?? [];
+    } catch (err) {
+      if (err.response?.status === 401) {
+        throw new CustomError('QB access token expired', HttpStatusCode.UNAUTHORIZED, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_TOKEN_EXPIRED);
+      }
+      this.logger.error(`QB getAccounts failed: ${err.message}`);
+      throw new CustomError('Failed to fetch QuickBooks accounts', HttpStatusCode.INTERNAL_SERVER_ERROR, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_API_ERROR);
+    }
+  }
+
+  async createItem(
+    accessToken: string,
+    realmId: string,
+    payload: {
+      name: string;
+      type: 'Inventory' | 'Service' | 'NonInventory';
+      unitPrice: number;
+      incomeAccountId: string;
+      description?: string;
+      sku?: string;
+      purchaseCost?: number;
+      expenseAccountId?: string;
+      trackQty?: boolean;
+      qtyOnHand?: number;
+      parentItemId?: string;
+    },
+  ): Promise<{ Id: string; Name: string; Active: boolean; SyncToken: string }> {
+    const client = this.buildApiClient(accessToken, realmId);
+    try {
+      const body: Record<string, any> = {
+        Name: payload.name,
+        Type: payload.type,
+        UnitPrice: payload.unitPrice,
+        IncomeAccountRef: { value: payload.incomeAccountId },
+        ...(payload.description ? { Description: payload.description } : {}),
+        ...(payload.sku ? { Sku: payload.sku } : {}),
+        ...(payload.parentItemId ? { SubItem: true, ParentRef: { value: payload.parentItemId } } : {}),
+      };
+
+      if (payload.type === 'Inventory') {
+        body.TrackQtyOnHand = true;
+        body.QtyOnHand = payload.qtyOnHand ?? 0;
+        body.InvStartDate = new Date().toISOString().split('T')[0];
+        if (payload.expenseAccountId) body.ExpenseAccountRef = { value: payload.expenseAccountId };
+        if (payload.purchaseCost !== undefined) body.PurchaseCost = payload.purchaseCost;
+      } else if (payload.expenseAccountId) {
+        body.ExpenseAccountRef = { value: payload.expenseAccountId };
+        if (payload.purchaseCost !== undefined) body.PurchaseCost = payload.purchaseCost;
+      }
+
+      const response = await client.post('/item?minorversion=70', body);
+      return response.data.Item;
+    } catch (err) {
+      if (err.response?.status === 401) {
+        throw new CustomError('QB access token expired', HttpStatusCode.UNAUTHORIZED, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_TOKEN_EXPIRED);
+      }
+      const qbMessage = err.response?.data?.Fault?.Error?.[0]?.Message || err.message;
+      this.logger.error(`QB createItem failed: ${qbMessage}`);
+      throw new CustomError(`Failed to create QuickBooks product: ${qbMessage}`, HttpStatusCode.BAD_REQUEST, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_API_ERROR);
+    }
+  }
+
   async query<T>(accessToken: string, realmId: string, query: string): Promise<T> {
     const client = this.buildApiClient(accessToken, realmId);
     try {
