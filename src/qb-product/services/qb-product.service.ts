@@ -7,7 +7,7 @@ import { isTokenExpired } from 'src/common/utils/utils';
 import { BusinessDAO } from 'src/business/daos/business.dao';
 import { QuickBooksClient } from 'src/external/quickbooks/quickbooks.client';
 import { QbProductDAO } from '../daos/qb-product.dao';
-import { CreateProductDTO } from '../dtos/qb-product.dto';
+import { CreateProductDTO, UpdateProductDTO } from '../dtos/qb-product.dto';
 import { detectOrderingUnits } from '../utils/unit-detection';
 
 @Injectable()
@@ -28,6 +28,47 @@ export class QbProductService {
       throw new CustomError('Product not found', HttpStatusCode.NOT_FOUND, ApiErrorCode.GENERAL, ApiErrorSubCode.NOT_FOUND);
     }
     return product;
+  }
+
+  async updateProduct(id: string, businessId: string, dto: UpdateProductDTO) {
+    const product = await this.qbProductDAO.findByIdAndBusiness(id, businessId);
+    if (!product) {
+      throw new CustomError('Product not found', HttpStatusCode.NOT_FOUND, ApiErrorCode.GENERAL, ApiErrorSubCode.NOT_FOUND);
+    }
+
+    if ((product as any).isCategory) {
+      throw new CustomError('Category items cannot be edited', HttpStatusCode.BAD_REQUEST, ApiErrorCode.GENERAL, ApiErrorSubCode.BAD_DATA);
+    }
+
+    // Nothing to update
+    const hasChanges = Object.values(dto).some((v) => v !== undefined);
+    if (!hasChanges) return product;
+
+    const { accessToken, realmId } = await this.getTokens(businessId);
+    const qbId = (product as any).qbId;
+
+    // Fetch current SyncToken from QB — required for optimistic concurrency
+    const current = await this.qbClient.getItemSyncToken(accessToken, realmId, qbId);
+    if (!current) {
+      throw new CustomError('Product no longer exists in QuickBooks', HttpStatusCode.NOT_FOUND, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.NOT_FOUND);
+    }
+
+    await this.qbClient.updateItem(accessToken, realmId, qbId, current.syncToken, {
+      name:        dto.name,
+      description: dto.description,
+      sku:         dto.sku,
+      unitPrice:   dto.unitPrice,
+    });
+
+    // Update our DB immediately — don't wait for the webhook
+    const dbUpdate: Record<string, any> = {};
+    if (dto.name        !== undefined) dbUpdate.name        = dto.name;
+    if (dto.description !== undefined) dbUpdate.description = dto.description;
+    if (dto.sku         !== undefined) dbUpdate.sku         = dto.sku;
+    if (dto.unitPrice   !== undefined) dbUpdate.price       = dto.unitPrice;
+
+    await this.qbProductDAO.updateById(id, dbUpdate as any);
+    return this.qbProductDAO.findByIdAndBusiness(id, businessId);
   }
 
   async getQbAccounts(businessId: string) {

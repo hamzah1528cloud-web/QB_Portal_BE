@@ -243,6 +243,55 @@ export class QuickBooksClient {
     }
   }
 
+  async getItemSyncToken(accessToken: string, realmId: string, qbId: string): Promise<{ syncToken: string; item: any } | null> {
+    const client = this.buildApiClient(accessToken, realmId);
+    try {
+      const response = await client.get(`/item/${qbId}?minorversion=70`);
+      const item = response.data.Item;
+      return item ? { syncToken: item.SyncToken, item } : null;
+    } catch (err) {
+      if (err.response?.status === 404) return null;
+      if (err.response?.status === 401) throw new CustomError('QB access token expired', HttpStatusCode.UNAUTHORIZED, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_TOKEN_EXPIRED);
+      throw new CustomError('Failed to fetch QuickBooks item', HttpStatusCode.INTERNAL_SERVER_ERROR, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_API_ERROR);
+    }
+  }
+
+  async updateItem(
+    accessToken: string,
+    realmId: string,
+    qbId: string,
+    syncToken: string,
+    payload: { name?: string; description?: string; sku?: string; unitPrice?: number },
+  ): Promise<{ Id: string; Name: string; SyncToken: string }> {
+    const client = this.buildApiClient(accessToken, realmId);
+    try {
+      const body: Record<string, any> = {
+        Id: qbId,
+        SyncToken: syncToken,
+        sparse: true,
+        ...(payload.name        !== undefined ? { Name: payload.name }               : {}),
+        ...(payload.description !== undefined ? { Description: payload.description } : {}),
+        ...(payload.sku         !== undefined ? { Sku: payload.sku }                 : {}),
+        ...(payload.unitPrice   !== undefined ? { UnitPrice: payload.unitPrice }     : {}),
+      };
+      const response = await client.post('/item?operation=update&minorversion=70', body);
+      return response.data.Item;
+    } catch (err) {
+      const status = err.response?.status;
+      if (status === 401) throw new CustomError('QB access token expired', HttpStatusCode.UNAUTHORIZED, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_TOKEN_EXPIRED);
+      if (status === 400) {
+        const msg = err.response?.data?.Fault?.Error?.[0]?.Message || err.message;
+        // SyncToken mismatch — item was modified in QB between our fetch and update
+        if (msg?.toLowerCase().includes('staleobject') || msg?.toLowerCase().includes('synctoken')) {
+          throw new CustomError('Product was recently modified in QuickBooks — please try again', HttpStatusCode.CONFLICT, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_API_ERROR);
+        }
+        throw new CustomError(`Failed to update product: ${msg}`, HttpStatusCode.BAD_REQUEST, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_API_ERROR);
+      }
+      this.logger.error(`QB updateItem failed: ${err.message}`);
+      throw new CustomError('Failed to update QuickBooks product', HttpStatusCode.INTERNAL_SERVER_ERROR, ApiErrorCode.QUICKBOOKS, ApiErrorSubCode.QB_API_ERROR);
+    }
+  }
+
   async getAccounts(
     accessToken: string,
     realmId: string,

@@ -15,6 +15,7 @@ export class QbProductDTO {
   incomeAccountName?: string;
   expenseAccountName?: string;
   isActive: boolean;
+  isCategory: boolean;
   isSubItem: boolean;
   parentQbId?: string;
   parentName?: string;
@@ -27,6 +28,13 @@ export class QbProductDTO {
 
 export class UpdateProductUnitsDTO {
   units: string[];
+}
+
+export class UpdateProductDTO {
+  name?:        string;
+  description?: string;
+  sku?:         string;
+  unitPrice?:   number;
 }
 
 export class CreateProductDTO {
