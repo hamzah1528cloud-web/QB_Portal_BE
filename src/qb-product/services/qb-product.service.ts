@@ -73,11 +73,12 @@ export class QbProductService {
 
   async getQbAccounts(businessId: string) {
     const { accessToken, realmId } = await this.getTokens(businessId);
-    const [income, expense] = await Promise.all([
+    const [income, expense, asset] = await Promise.all([
       this.qbClient.getAccounts(accessToken, realmId, 'Income'),
       this.qbClient.getAccounts(accessToken, realmId, 'Cost of Goods Sold'),
+      this.qbClient.getAccounts(accessToken, realmId, 'Other Current Asset', 'Inventory'),
     ]);
-    return { income, expense };
+    return { income, expense, asset };
   }
 
   async createProduct(businessId: string, dto: CreateProductDTO) {
@@ -92,6 +93,7 @@ export class QbProductService {
       sku:             dto.sku,
       purchaseCost:    dto.purchaseCost,
       expenseAccountId: dto.expenseAccountId,
+      assetAccountId:  dto.assetAccountId,
       qtyOnHand:       dto.qtyOnHand,
       parentItemId:    dto.parentItemId,
     });

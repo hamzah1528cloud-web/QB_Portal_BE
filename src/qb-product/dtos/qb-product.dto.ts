@@ -1,3 +1,13 @@
+import {
+  IsArray,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateIf,
+} from 'class-validator';
+
 export class QbProductDTO {
   id: string;
   businessId: string;
@@ -27,25 +37,71 @@ export class QbProductDTO {
 }
 
 export class UpdateProductUnitsDTO {
+  @IsArray()
+  @IsString({ each: true })
   units: string[];
 }
 
 export class UpdateProductDTO {
-  name?:        string;
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
-  sku?:         string;
-  unitPrice?:   number;
+
+  @IsOptional()
+  @IsString()
+  sku?: string;
+
+  @IsOptional()
+  @IsNumber()
+  unitPrice?: number;
 }
 
 export class CreateProductDTO {
+  @IsString()
+  @IsNotEmpty()
   name: string;
+
+  @IsEnum(['Inventory', 'Service', 'NonInventory'])
   type: 'Inventory' | 'Service' | 'NonInventory';
+
+  @IsNumber()
   unitPrice: number;
+
+  @IsString()
+  @IsNotEmpty()
   incomeAccountId: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
   sku?: string;
+
+  @IsOptional()
+  @IsNumber()
   purchaseCost?: number;
+
+  @IsOptional()
+  @IsString()
   expenseAccountId?: string;
+
+  // Required for type === 'Inventory' — QuickBooks rejects inventory items without an asset account
+  @ValidateIf((o) => o.type === 'Inventory')
+  @IsString()
+  @IsNotEmpty()
+  assetAccountId?: string;
+
+  @IsOptional()
+  @IsNumber()
   qtyOnHand?: number;
+
+  @IsOptional()
+  @IsString()
   parentItemId?: string; // QB ID of parent item — creates a sub-item
 }
