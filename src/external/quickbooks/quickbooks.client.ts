@@ -295,11 +295,16 @@ export class QuickBooksClient {
   async getAccounts(
     accessToken: string,
     realmId: string,
-    accountType?: 'Income' | 'Cost of Goods Sold' | 'Expense',
+    accountType?: 'Income' | 'Cost of Goods Sold' | 'Expense' | 'Other Current Asset',
+    accountSubType?: string,
   ): Promise<{ Id: string; Name: string; AccountType: string; AccountSubType: string; Active: boolean }[]> {
     const client = this.buildApiClient(accessToken, realmId);
     try {
-      const where = accountType ? ` WHERE AccountType = '${accountType}' AND Active = true` : ' WHERE Active = true';
+      const conditions: string[] = [];
+      if (accountType) conditions.push(`AccountType = '${accountType}'`);
+      if (accountSubType) conditions.push(`AccountSubType = '${accountSubType}'`);
+      conditions.push('Active = true');
+      const where = ` WHERE ${conditions.join(' AND ')}`;
       const response = await client.get('/query', {
         params: { query: `SELECT * FROM Account${where} MAXRESULTS 200`, minorversion: 70 },
       });
@@ -325,6 +330,7 @@ export class QuickBooksClient {
       sku?: string;
       purchaseCost?: number;
       expenseAccountId?: string;
+      assetAccountId?: string;
       trackQty?: boolean;
       qtyOnHand?: number;
       parentItemId?: string;
@@ -347,6 +353,7 @@ export class QuickBooksClient {
         body.QtyOnHand = payload.qtyOnHand ?? 0;
         body.InvStartDate = new Date().toISOString().split('T')[0];
         if (payload.expenseAccountId) body.ExpenseAccountRef = { value: payload.expenseAccountId };
+        if (payload.assetAccountId) body.AssetAccountRef = { value: payload.assetAccountId };
         if (payload.purchaseCost !== undefined) body.PurchaseCost = payload.purchaseCost;
       } else if (payload.expenseAccountId) {
         body.ExpenseAccountRef = { value: payload.expenseAccountId };

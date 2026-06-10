@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  ValidateIf,
 } from 'class-validator';
 
 export class QbProductDTO {
@@ -89,6 +90,12 @@ export class CreateProductDTO {
   @IsOptional()
   @IsString()
   expenseAccountId?: string;
+
+  // Required for type === 'Inventory' — QuickBooks rejects inventory items without an asset account
+  @ValidateIf((o) => o.type === 'Inventory')
+  @IsString()
+  @IsNotEmpty()
+  assetAccountId?: string;
 
   @IsOptional()
   @IsNumber()
