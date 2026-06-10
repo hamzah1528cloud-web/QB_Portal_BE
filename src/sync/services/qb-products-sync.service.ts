@@ -38,12 +38,12 @@ export class QbProductsSyncService {
     let totalSynced = 0;
     const allItems: QBItem[] = [];
 
-    // Collect all items first so we can batch-fetch UOM sets
+    // Collect all items including Category type (used as group headers on portal)
     while (true) {
       const response = await this.qbClient.query<{ Item?: QBItem[] }>(
         accessToken,
         realmId,
-        `SELECT * FROM Item WHERE Active = true AND Type IN ('Inventory', 'Service', 'NonInventory') STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`,
+        `SELECT * FROM Item WHERE Active = true AND Type IN ('Inventory', 'Service', 'NonInventory', 'Category') STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`,
       );
 
       const items = response.Item || [];
@@ -104,24 +104,28 @@ export class QbProductsSyncService {
   }
 
   private async upsertItem(businessId: string, item: QBItem, uomSetCache: Map<string, string[]>): Promise<void> {
-    const detectedUnits = detectOrderingUnits(item, uomSetCache);
+    const isCategory = item.Type === 'Category';
+
+    // Category items are group labels — no units, no price, no stock
+    const detectedUnits = isCategory ? ['each'] : detectOrderingUnits(item, uomSetCache);
 
     const baseData: Record<string, any> = {
-      name: item.Name,
-      itemType: item.Type,
-      description: item.Description,
-      sku: item.Sku,
-      price: item.UnitPrice || 0,
-      stockQuantity: item.Type === 'Inventory' ? (item.QtyOnHand || 0) : 0,
-      taxCode: item.SalesTaxCodeRef?.value,
-      purchaseCost: item.PurchaseCost ?? 0,
+      name:             item.Name,
+      itemType:         item.Type,
+      description:      item.Description,
+      sku:              item.Sku,
+      price:            item.UnitPrice || 0,
+      stockQuantity:    item.Type === 'Inventory' ? (item.QtyOnHand || 0) : 0,
+      taxCode:          item.SalesTaxCodeRef?.value,
+      purchaseCost:     item.PurchaseCost ?? 0,
       purchaseDescription: item.PurchaseDesc,
-      incomeAccountName: item.IncomeAccountRef?.name,
+      incomeAccountName:  item.IncomeAccountRef?.name,
       expenseAccountName: item.ExpenseAccountRef?.name,
-      isActive: item.Active !== false,
-      isSubItem: !!item.SubItem,
-      parentQbId: item.ParentRef?.value ?? null,
-      parentName: item.ParentRef?.name ?? null,
+      isActive:         item.Active !== false,
+      isCategory,
+      isSubItem:        !!item.SubItem,
+      parentQbId:       item.ParentRef?.value ?? null,
+      parentName:       item.ParentRef?.name ?? null,
     };
 
     await this.qbProductDAO.upsertByQbIdConditionalUnits(businessId, item.Id, baseData, detectedUnits);

@@ -31,6 +31,9 @@ export class QbProduct extends BaseSchema {
   unitOfMeasure: string;
 
   @Prop({ required: false, default: false })
+  isCategory: boolean;
+
+  @Prop({ required: false, default: false })
   isSubItem: boolean;
 
   @Prop({ required: false })

@@ -3,7 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger'
 import { CombinedAuthGuard } from 'src/common/security/guards/combined-auth.guard';
 import { JwtAuthGuard } from 'src/common/security/guards/jwt-auth.guard';
 import { QbProductService } from '../services/qb-product.service';
-import { CreateProductDTO, UpdateProductUnitsDTO } from '../dtos/qb-product.dto';
+import { CreateProductDTO, UpdateProductDTO, UpdateProductUnitsDTO } from '../dtos/qb-product.dto';
 
 @ApiTags('QB Products')
 @ApiBearerAuth('access-token')
@@ -51,6 +51,13 @@ export class QbProductController {
   @ApiOperation({ summary: 'Get a single product by ID' })
   async findOne(@Request() req: any, @Param('id') id: string) {
     return this.qbProductService.findByIdAndBusiness(id, req.businessId);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Update product name, description, SKU or price in QuickBooks (business owner only)' })
+  async update(@Request() req: any, @Param('id') id: string, @Body() dto: UpdateProductDTO) {
+    return this.qbProductService.updateProduct(id, req.businessId, dto);
   }
 
   @Patch(':id/units')
