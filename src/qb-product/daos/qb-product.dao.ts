@@ -64,7 +64,12 @@ export class QbProductDAO extends BaseDAO<QbProductDocument, QbProductDTO> {
     return mapDoc<QbProductDocument>(doc);
   }
 
-  async findAllByBusiness(businessId: string, page: number, limit: number, filters?: { search?: string; includeInactive?: boolean }) {
+  async findAllByBusiness(
+    businessId: string,
+    page: number,
+    limit: number,
+    filters?: { search?: string; includeInactive?: boolean; itemType?: string; category?: string },
+  ) {
     const skip = (page - 1) * limit;
     const filter: any = { businessId };
 
@@ -74,6 +79,10 @@ export class QbProductDAO extends BaseDAO<QbProductDocument, QbProductDTO> {
       const re = new RegExp(filters.search.trim(), 'i');
       filter.$or = [{ name: re }, { sku: re }];
     }
+
+    if (filters?.itemType) filter.itemType = filters.itemType;
+
+    if (filters?.category) filter.parentQbId = filters.category;
 
     const [data, total] = await Promise.all([
       this.model.find(filter).sort({ name: 1 }).skip(skip).limit(limit).lean().exec(),

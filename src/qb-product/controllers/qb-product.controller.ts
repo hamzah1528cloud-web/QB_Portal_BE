@@ -18,18 +18,22 @@ export class QbProductController {
   @ApiQuery({ name: 'limit',           required: false, type: Number })
   @ApiQuery({ name: 'search',          required: false, type: String })
   @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
+  @ApiQuery({ name: 'itemType',        required: false, type: String, description: 'Filter by item type (Inventory, Service, NonInventory)' })
+  @ApiQuery({ name: 'category',        required: false, type: String, description: 'Filter by parent category qbId' })
   async findAll(
     @Request() req: any,
     @Query('page')            page            = '1',
     @Query('limit')           limit           = '20',
     @Query('search')          search?:          string,
     @Query('includeInactive') includeInactive = 'false',
+    @Query('itemType')        itemType?:        string,
+    @Query('category')        category?:        string,
   ) {
     return this.qbProductService.findAllByBusiness(
       req.businessId,
       Math.max(1, parseInt(page)),
       Math.min(100, Math.max(1, parseInt(limit))),
-      { search, includeInactive: includeInactive === 'true' },
+      { search, includeInactive: includeInactive === 'true', itemType, category },
     );
   }
 

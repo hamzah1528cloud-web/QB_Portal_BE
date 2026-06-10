@@ -18,7 +18,12 @@ export class QbProductService {
     private readonly qbClient: QuickBooksClient,
   ) {}
 
-  async findAllByBusiness(businessId: string, page: number, limit: number, filters?: { search?: string; includeInactive?: boolean }) {
+  async findAllByBusiness(
+    businessId: string,
+    page: number,
+    limit: number,
+    filters?: { search?: string; includeInactive?: boolean; itemType?: string; category?: string },
+  ) {
     return this.qbProductDAO.findAllByBusiness(businessId, page, limit, filters);
   }
 
