@@ -26,11 +26,12 @@ export class PortalUserDAO extends BaseDAO<PortalUserDocument, any> {
     return mapDoc<PortalUserDocument>(doc);
   }
 
-  async findPaginatedByBusiness(businessId: string, page: number, limit: number, filters?: { search?: string; isActive?: boolean }) {
+  async findPaginatedByBusiness(businessId: string, page: number, limit: number, filters?: { search?: string; isActive?: boolean; qbCustomerId?: string }) {
     const skip = (page - 1) * limit;
     const filter: any = { businessId };
 
     if (filters?.isActive !== undefined) filter.isActive = filters.isActive;
+    if (filters?.qbCustomerId) filter.qbCustomerId = filters.qbCustomerId;
 
     if (filters?.search?.trim()) {
       const re = new RegExp(filters.search.trim(), 'i');

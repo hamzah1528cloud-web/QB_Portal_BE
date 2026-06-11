@@ -110,20 +110,24 @@ export class QbProductService {
       parentName = (parent as any)?.name;
     }
 
-    const detectedUnits = detectOrderingUnits(
-      { Id: qbItem.Id, Name: qbItem.Name, Sku: dto.sku, SubItem: !!dto.parentItemId, ParentRef: parentName ? { name: parentName } : undefined },
-      new Map(),
-    );
+    const isCategory = dto.type === 'Category';
+    const detectedUnits = isCategory
+      ? ['each']
+      : detectOrderingUnits(
+          { Id: qbItem.Id, Name: qbItem.Name, Sku: dto.sku, SubItem: !!dto.parentItemId, ParentRef: parentName ? { name: parentName } : undefined },
+          new Map(),
+        );
 
     await this.qbProductDAO.upsertByQbIdConditionalUnits(businessId, qbItem.Id, {
       name:            qbItem.Name,
       itemType:        dto.type,
       description:     dto.description,
       sku:             dto.sku,
-      price:           dto.unitPrice,
+      price:           dto.unitPrice ?? 0,
       stockQuantity:   dto.qtyOnHand ?? 0,
       purchaseCost:    dto.purchaseCost ?? 0,
       isActive:        true,
+      isCategory,
       isSubItem:       !!dto.parentItemId,
       parentQbId:      dto.parentItemId ?? null,
       parentName:      parentName ?? null,

@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, MinLength } from 'class-validator';
 import { PortalJwtAuthGuard } from 'src/common/security/guards/portal-jwt.guard';
 import { PortalAuthService } from '../services/portal-auth.service';
-import { PortalLoginDTO } from '../dtos/portal-auth.dto';
+import { PortalLoginDTO, PortalRegisterDTO } from '../dtos/portal-auth.dto';
 
 class ChangePasswordDTO {
   @IsString() @IsNotEmpty() currentPassword: string;
@@ -14,6 +14,12 @@ class ChangePasswordDTO {
 @Controller({ path: 'portal-auth', version: '1' })
 export class PortalAuthController {
   constructor(private readonly portalAuthService: PortalAuthService) {}
+
+  @Post('register')
+  @ApiOperation({ summary: 'Portal customer self-registration — creates an account not yet linked to a QuickBooks customer' })
+  async register(@Body() dto: PortalRegisterDTO) {
+    return this.portalAuthService.register(dto);
+  }
 
   @Post('login')
   @ApiOperation({ summary: 'Portal customer login — username + password only' })

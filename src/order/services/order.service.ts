@@ -44,7 +44,7 @@ export class OrderService {
     return order;
   }
 
-  async findAllByBusiness(businessId: string, page: number, limit: number, filters?: { status?: string; search?: string }) {
+  async findAllByBusiness(businessId: string, page: number, limit: number, filters?: { status?: string; search?: string; customerId?: string }) {
     return this.orderDAO.findPaginatedByBusiness(businessId, page, limit, filters);
   }
 

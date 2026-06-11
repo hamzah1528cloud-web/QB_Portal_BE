@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { BusinessModule } from 'src/business/business.module';
 import { QbCustomerModule } from 'src/qb-customer/qb-customer.module';
 import { QbInvoiceModule } from 'src/qb-invoice/qb-invoice.module';
 import { QbPaymentModule } from 'src/qb-payment/qb-payment.module';
@@ -14,6 +15,7 @@ import { PortalDataController } from './controllers/portal-data.controller';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: PortalUser.name, schema: PortalUserSchema }]),
+    BusinessModule,
     QbCustomerModule,
     QbInvoiceModule,
     QbPaymentModule,

@@ -11,6 +11,11 @@ class CreatePortalUserDTO {
   @IsOptional() @IsString() qbCustomerName?: string;
 }
 
+class LinkPortalUserDTO {
+  @IsString() @IsNotEmpty() qbCustomerId: string;
+  @IsString() @IsNotEmpty() qbCustomerName: string;
+}
+
 @ApiTags('Portal Users (Business)')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard)
@@ -20,16 +25,18 @@ export class PortalUsersController {
 
   @Get()
   @ApiOperation({ summary: 'List all portal users for this business' })
-  @ApiQuery({ name: 'page',     required: false, type: Number })
-  @ApiQuery({ name: 'limit',    required: false, type: Number })
-  @ApiQuery({ name: 'search',   required: false, type: String })
-  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @ApiQuery({ name: 'page',         required: false, type: Number })
+  @ApiQuery({ name: 'limit',        required: false, type: Number })
+  @ApiQuery({ name: 'search',       required: false, type: String })
+  @ApiQuery({ name: 'isActive',     required: false, type: Boolean })
+  @ApiQuery({ name: 'qbCustomerId', required: false, type: String })
   async list(
     @Request() req: any,
-    @Query('page')     page     = '1',
-    @Query('limit')    limit    = '20',
-    @Query('search')   search?:   string,
-    @Query('isActive') isActive?: string,
+    @Query('page')         page     = '1',
+    @Query('limit')        limit    = '20',
+    @Query('search')       search?:   string,
+    @Query('isActive')     isActive?: string,
+    @Query('qbCustomerId') qbCustomerId?: string,
   ) {
     return this.portalAuthService.listByBusiness(
       req.businessId,
@@ -38,6 +45,7 @@ export class PortalUsersController {
       {
         search,
         isActive: isActive === undefined ? undefined : isActive === 'true',
+        qbCustomerId,
       },
     );
   }
@@ -64,5 +72,19 @@ export class PortalUsersController {
   @ApiOperation({ summary: 'Reset password — returns new plain password to share with customer' })
   async resetPassword(@Request() req: any, @Param('id') id: string) {
     return this.portalAuthService.resetPassword(id, req.businessId);
+  }
+
+  @Patch(':id/link')
+  @ApiOperation({ summary: 'Link a (self-registered) portal user to a QuickBooks customer' })
+  async link(@Request() req: any, @Param('id') id: string, @Body() dto: LinkPortalUserDTO) {
+    await this.portalAuthService.linkToCustomer(id, req.businessId, dto.qbCustomerId, dto.qbCustomerName);
+    return { message: 'Portal user linked to customer' };
+  }
+
+  @Patch(':id/unlink')
+  @ApiOperation({ summary: 'Unlink a portal user from its QuickBooks customer' })
+  async unlink(@Request() req: any, @Param('id') id: string) {
+    await this.portalAuthService.unlinkFromCustomer(id, req.businessId);
+    return { message: 'Portal user unlinked from customer' };
   }
 }

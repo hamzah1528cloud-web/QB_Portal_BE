@@ -65,15 +65,19 @@ export class CreateProductDTO {
   @IsNotEmpty()
   name: string;
 
-  @IsEnum(['Inventory', 'Service', 'NonInventory'])
-  type: 'Inventory' | 'Service' | 'NonInventory';
+  @IsEnum(['Inventory', 'Service', 'NonInventory', 'Category'])
+  type: 'Inventory' | 'Service' | 'NonInventory' | 'Category';
 
+  // Not applicable to Category items — QuickBooks categories carry no price
+  @ValidateIf((o) => o.type !== 'Category')
   @IsNumber()
-  unitPrice: number;
+  unitPrice?: number;
 
+  // Not applicable to Category items — QuickBooks categories have no income account
+  @ValidateIf((o) => o.type !== 'Category')
   @IsString()
   @IsNotEmpty()
-  incomeAccountId: string;
+  incomeAccountId?: string;
 
   @IsOptional()
   @IsString()

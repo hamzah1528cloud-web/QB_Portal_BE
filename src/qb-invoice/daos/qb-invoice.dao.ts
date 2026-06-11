@@ -35,8 +35,8 @@ export class QbInvoiceDAO extends BaseDAO<QbInvoiceDocument, QbInvoiceDTO> {
     const skip = (page - 1) * limit;
     const filter: any = { businessId };
 
-    if (filters?.status)     filter.status     = filters.status;
-    if (filters?.customerId) filter.customerId = filters.customerId;
+    if (filters?.status)     filter.status       = filters.status;
+    if (filters?.customerId) filter.qbCustomerId = filters.customerId;
 
     const [data, total] = await Promise.all([
       this.model.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),

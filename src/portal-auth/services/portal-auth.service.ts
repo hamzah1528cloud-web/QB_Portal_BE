@@ -6,8 +6,9 @@ import { CustomError } from 'src/common/errors/api.error';
 import { ApiErrorCode } from 'src/common/enums/codes/api-error.enum';
 import { ApiErrorSubCode } from 'src/common/enums/codes/api-error-subcode.enum';
 import { HttpStatusCode } from 'src/common/enums/codes/http-error-code.enum';
+import { BusinessDAO } from 'src/business/daos/business.dao';
 import { PortalUserDAO } from '../daos/portal-user.dao';
-import { PortalLoginDTO, PortalAuthResponseDTO } from '../dtos/portal-auth.dto';
+import { PortalLoginDTO, PortalRegisterDTO, PortalAuthResponseDTO } from '../dtos/portal-auth.dto';
 
 function generateUsername(): string {
   return 'usr_' + crypto.randomBytes(5).toString('hex'); // e.g. usr_a3f9c12b
@@ -27,8 +28,37 @@ function safeUser(u: any) {
 export class PortalAuthService {
   constructor(
     private readonly portalUserDAO: PortalUserDAO,
+    private readonly businessDAO: BusinessDAO,
     private readonly jwtService: JwtService,
   ) {}
+
+  async register(dto: PortalRegisterDTO): Promise<PortalAuthResponseDTO> {
+    await this.businessDAO.findById(dto.businessId);
+
+    const existing = await this.portalUserDAO.findByBusinessAndEmail(dto.businessId, dto.email);
+    if (existing) throw new CustomError('An account with this email already exists', HttpStatusCode.CONFLICT, ApiErrorCode.AUTH, ApiErrorSubCode.CONFLICT);
+
+    let username = generateUsername();
+    let attempts = 0;
+    while (await this.portalUserDAO.findByUsername(username)) {
+      username = generateUsername();
+      if (++attempts > 10) throw new CustomError('Could not generate unique username', HttpStatusCode.INTERNAL_SERVER_ERROR, ApiErrorCode.GENERAL, ApiErrorSubCode.BAD_DATA);
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = await this.portalUserDAO.create({
+      businessId: dto.businessId as any,
+      username,
+      name: dto.name,
+      email: dto.email,
+      passwordHash,
+      isActive: true,
+    } as any);
+
+    const portalUserId = (user as any).id;
+    const token = await this.jwtService.signAsync({ sub: portalUserId, portalUserId, businessId: dto.businessId, qbCustomerId: null, role: 'PORTAL' });
+    return { token, portalUserId, businessId: dto.businessId, name: dto.name, email: dto.email };
+  }
 
   async login(dto: PortalLoginDTO): Promise<PortalAuthResponseDTO> {
     const user = await this.portalUserDAO.findByUsername(dto.username);
@@ -80,6 +110,18 @@ export class PortalAuthService {
     return { ...safeUser(user as any), username, plainPassword };
   }
 
+  async linkToCustomer(id: string, businessId: string, qbCustomerId: string, qbCustomerName: string): Promise<void> {
+    const user = await this.portalUserDAO.findByIdAndBusiness(id, businessId);
+    if (!user) throw new CustomError('Portal user not found', HttpStatusCode.NOT_FOUND, ApiErrorCode.GENERAL, ApiErrorSubCode.NOT_FOUND);
+    await this.portalUserDAO.updateById(id, { qbCustomerId, qbCustomerName } as any);
+  }
+
+  async unlinkFromCustomer(id: string, businessId: string): Promise<void> {
+    const user = await this.portalUserDAO.findByIdAndBusiness(id, businessId);
+    if (!user) throw new CustomError('Portal user not found', HttpStatusCode.NOT_FOUND, ApiErrorCode.GENERAL, ApiErrorSubCode.NOT_FOUND);
+    await this.portalUserDAO.updateById(id, { qbCustomerId: null, qbCustomerName: null } as any);
+  }
+
   async setStatus(id: string, businessId: string, isActive: boolean): Promise<void> {
     const user = await this.portalUserDAO.findByIdAndBusiness(id, businessId);
     if (!user) throw new CustomError('Portal user not found', HttpStatusCode.NOT_FOUND, ApiErrorCode.GENERAL, ApiErrorSubCode.NOT_FOUND);
@@ -94,7 +136,7 @@ export class PortalAuthService {
     return { plainPassword };
   }
 
-  async listByBusiness(businessId: string, page: number, limit: number, filters?: { search?: string; isActive?: boolean }) {
+  async listByBusiness(businessId: string, page: number, limit: number, filters?: { search?: string; isActive?: boolean; qbCustomerId?: string }) {
     const result = await this.portalUserDAO.findPaginatedByBusiness(businessId, page, limit, filters);
     return { ...result, data: result.data.map((u: any) => safeUser(u)) };
   }

@@ -23,6 +23,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       const res = exception.getResponse();
       message = typeof res === 'object' ? (res as any).message || exception.message : exception.message;
       this.logger.error(`HttpException: ${message}`);
+    } else if ((exception as any)?.name === 'CastError' && (exception as any)?.kind === 'ObjectId') {
+      status = HttpStatus.NOT_FOUND;
+      message = 'Resource not found';
+      this.logger.warn(`CastError: invalid ObjectId "${(exception as any).value}"`);
     } else if (exception instanceof Error) {
       message = exception.message;
       this.logger.error(`RuntimeError: ${message}`, exception.stack);

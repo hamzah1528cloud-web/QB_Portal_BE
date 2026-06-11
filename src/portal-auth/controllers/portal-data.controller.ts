@@ -24,7 +24,7 @@ export class PortalDataController {
 
   private requireQbCustomerId(req: any): string {
     const id = req.qbCustomerId;
-    if (!id) throw new CustomError('Your portal account is not linked to a customer yet', HttpStatusCode.BAD_REQUEST, ApiErrorCode.GENERAL, ApiErrorSubCode.BAD_DATA);
+    if (!id) throw new CustomError("Your account isn't linked to a QuickBooks customer yet — contact the business to get set up", HttpStatusCode.BAD_REQUEST, ApiErrorCode.GENERAL, ApiErrorSubCode.BAD_DATA);
     return id;
   }
 

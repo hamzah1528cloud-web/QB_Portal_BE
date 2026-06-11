@@ -24,22 +24,24 @@ export class OrderController {
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'List all orders for this business' })
-  @ApiQuery({ name: 'page',   required: false, type: Number })
-  @ApiQuery({ name: 'limit',  required: false, type: Number })
-  @ApiQuery({ name: 'status', required: false, type: String })
-  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'page',       required: false, type: Number })
+  @ApiQuery({ name: 'limit',      required: false, type: Number })
+  @ApiQuery({ name: 'status',     required: false, type: String })
+  @ApiQuery({ name: 'search',     required: false, type: String })
+  @ApiQuery({ name: 'customerId', required: false, type: String })
   async findAll(
     @Request() req: any,
-    @Query('page')   page   = '1',
-    @Query('limit')  limit  = '20',
-    @Query('status') status?: string,
-    @Query('search') search?: string,
+    @Query('page')       page   = '1',
+    @Query('limit')      limit  = '20',
+    @Query('status')     status?: string,
+    @Query('search')     search?: string,
+    @Query('customerId') customerId?: string,
   ) {
     return this.orderService.findAllByBusiness(
       req.businessId,
       Math.max(1, parseInt(page)),
       Math.min(100, Math.max(1, parseInt(limit))),
-      { status, search },
+      { status, search, customerId },
     );
   }
 
@@ -76,7 +78,7 @@ export class OrderController {
   async portalCreate(@Request() req: any, @Body() dto: PortalCreateOrderDTO) {
     if (!req.qbCustomerId) {
       throw new CustomError(
-        'Your account is not linked to a QuickBooks customer — contact the business owner to set this up',
+        "Your account isn't linked to a QuickBooks customer yet — contact the business to get set up",
         HttpStatusCode.BAD_REQUEST,
         ApiErrorCode.GENERAL,
         ApiErrorSubCode.BAD_DATA,
@@ -114,7 +116,7 @@ export class OrderController {
   ) {
     if (!req.qbCustomerId) {
       throw new CustomError(
-        'Your account is not linked to a QuickBooks customer',
+        "Your account isn't linked to a QuickBooks customer yet — contact the business to get set up",
         HttpStatusCode.BAD_REQUEST,
         ApiErrorCode.GENERAL,
         ApiErrorSubCode.BAD_DATA,
@@ -136,7 +138,7 @@ export class OrderController {
   async portalFindOne(@Request() req: any, @Param('id') id: string) {
     if (!req.qbCustomerId) {
       throw new CustomError(
-        'Your account is not linked to a QuickBooks customer',
+        "Your account isn't linked to a QuickBooks customer yet — contact the business to get set up",
         HttpStatusCode.BAD_REQUEST,
         ApiErrorCode.GENERAL,
         ApiErrorSubCode.BAD_DATA,

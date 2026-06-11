@@ -22,10 +22,16 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAsync(token, { secret: JWT_SECRET });
+
+      if (payload.role === 'PORTAL') {
+        throw new CustomError('Invalid token type', HttpStatusCode.UNAUTHORIZED, ApiErrorCode.AUTH, ApiErrorSubCode.UNAUTHORIZED);
+      }
+
       request.user = payload;
       request.businessId = payload.businessId;
       return true;
     } catch (err) {
+      if (err instanceof CustomError) throw err;
       this.logger.warn(`JWT verification failed: ${err.message}`);
       throw new CustomError('Invalid or expired token', HttpStatusCode.UNAUTHORIZED, ApiErrorCode.AUTH, ApiErrorSubCode.UNAUTHORIZED);
     }

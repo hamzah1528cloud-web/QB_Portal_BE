@@ -323,9 +323,9 @@ export class QuickBooksClient {
     realmId: string,
     payload: {
       name: string;
-      type: 'Inventory' | 'Service' | 'NonInventory';
-      unitPrice: number;
-      incomeAccountId: string;
+      type: 'Inventory' | 'Service' | 'NonInventory' | 'Category';
+      unitPrice?: number;
+      incomeAccountId?: string;
       description?: string;
       sku?: string;
       purchaseCost?: number;
@@ -341,12 +341,16 @@ export class QuickBooksClient {
       const body: Record<string, any> = {
         Name: payload.name,
         Type: payload.type,
-        UnitPrice: payload.unitPrice,
-        IncomeAccountRef: { value: payload.incomeAccountId },
         ...(payload.description ? { Description: payload.description } : {}),
         ...(payload.sku ? { Sku: payload.sku } : {}),
         ...(payload.parentItemId ? { SubItem: true, ParentRef: { value: payload.parentItemId } } : {}),
       };
+
+      // Categories carry no price/account refs — they're purely organisational
+      if (payload.type !== 'Category') {
+        body.UnitPrice = payload.unitPrice;
+        body.IncomeAccountRef = { value: payload.incomeAccountId };
+      }
 
       if (payload.type === 'Inventory') {
         body.TrackQtyOnHand = true;
@@ -355,7 +359,7 @@ export class QuickBooksClient {
         if (payload.expenseAccountId) body.ExpenseAccountRef = { value: payload.expenseAccountId };
         if (payload.assetAccountId) body.AssetAccountRef = { value: payload.assetAccountId };
         if (payload.purchaseCost !== undefined) body.PurchaseCost = payload.purchaseCost;
-      } else if (payload.expenseAccountId) {
+      } else if (payload.type !== 'Category' && payload.expenseAccountId) {
         body.ExpenseAccountRef = { value: payload.expenseAccountId };
         if (payload.purchaseCost !== undefined) body.PurchaseCost = payload.purchaseCost;
       }
